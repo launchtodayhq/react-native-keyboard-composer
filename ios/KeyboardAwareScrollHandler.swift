@@ -1,0 +1,280 @@
+import ExpoModulesCore
+import UIKit
+
+/// Delegate to notify when scroll position changes
+protocol KeyboardAwareScrollHandlerDelegate: AnyObject {
+    func scrollHandler(_ handler: KeyboardAwareScrollHandler, didUpdateScrollPosition isAtBottom: Bool)
+}
+
+/// Native keyboard handler that directly controls a UIScrollView's contentInset.
+/// This bypasses React Native's JS bridge for smooth keyboard animations.
+class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrollViewDelegate {
+    weak var scrollView: UIScrollView?
+    weak var delegate: KeyboardAwareScrollHandlerDelegate?
+    /// Base inset WITHOUT safe area (composer + gap)
+    var baseBottomInset: CGFloat = 64 // 48 + 16
+    private var keyboardHeight: CGFloat = 0
+    private var wasAtBottom = false
+    private var isAtBottom = true
+    
+    /// Get safe area bottom from window
+    private var safeAreaBottom: CGFloat {
+        scrollView?.window?.safeAreaInsets.bottom ?? 34
+    }
+    
+    override init() {
+        super.init()
+        setupKeyboardObservers()
+        print("⌨️ [KeyboardHandler] initialized")
+    }
+    
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+        contentSizeObservation?.invalidate()
+        contentSizeObservation = nil
+        print("⌨️ [KeyboardHandler] deinit")
+    }
+    
+    private func setupKeyboardObservers() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(keyboardWillShow(_:)),
+            name: UIResponder.keyboardWillShowNotification,
+            object: nil
+        )
+        
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(keyboardWillHide(_:)),
+            name: UIResponder.keyboardWillHideNotification,
+            object: nil
+        )
+    }
+    
+    @objc private func keyboardWillShow(_ notification: Notification) {
+        guard let scrollView = scrollView,
+              let userInfo = notification.userInfo,
+              let keyboardFrame = userInfo[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect,
+              let duration = userInfo[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double,
+              let curveValue = userInfo[UIResponder.keyboardAnimationCurveUserInfoKey] as? UInt
+        else { return }
+        
+        // Check if at bottom BEFORE animation
+        wasAtBottom = isNearBottom(scrollView)
+        keyboardHeight = keyboardFrame.height
+        
+        print("⌨️ [KeyboardHandler] keyboard showing: height=\(keyboardHeight), wasAtBottom=\(wasAtBottom)")
+        
+        // Use raw UIView.animate with keyboard's exact animation curve
+        // The curve value (7) is converted to animation options by shifting left 16 bits
+        let animationOptions = UIView.AnimationOptions(rawValue: curveValue << 16)
+        
+        UIView.animate(
+            withDuration: duration,
+            delay: 0,
+            options: animationOptions,
+            animations: {
+                // Update content inset
+                self.updateContentInset()
+                
+                // Scroll to bottom INSIDE animation block
+                if self.wasAtBottom {
+                    let contentHeight = scrollView.contentSize.height
+                    let scrollViewHeight = scrollView.bounds.height
+                    let keyboardOpenPadding: CGFloat = 8
+                    let bottomInset = self.baseBottomInset + self.keyboardHeight + keyboardOpenPadding
+                    let maxOffset = max(0, contentHeight - scrollViewHeight + bottomInset)
+                    scrollView.contentOffset = CGPoint(x: 0, y: maxOffset)
+                }
+            },
+            completion: nil
+        )
+    }
+    
+    @objc private func keyboardWillHide(_ notification: Notification) {
+        guard let userInfo = notification.userInfo,
+              let duration = userInfo[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double,
+              let curveValue = userInfo[UIResponder.keyboardAnimationCurveUserInfoKey] as? UInt
+        else { return }
+        
+        keyboardHeight = 0
+        
+        print("⌨️ [KeyboardHandler] keyboard hiding")
+        
+        // Use raw UIView.animate with keyboard's exact animation curve
+        let animationOptions = UIView.AnimationOptions(rawValue: curveValue << 16)
+        
+        UIView.animate(
+            withDuration: duration,
+            delay: 0,
+            options: animationOptions,
+            animations: {
+                self.updateContentInset()
+            },
+            completion: nil
+        )
+    }
+    
+    private func isNearBottom(_ scrollView: UIScrollView) -> Bool {
+        let contentHeight = scrollView.contentSize.height
+        let scrollViewHeight = scrollView.bounds.height
+        let bottomInset = scrollView.contentInset.bottom
+        let currentOffset = scrollView.contentOffset.y
+        let maxOffset = max(0, contentHeight - scrollViewHeight + bottomInset)
+        
+        // Consider "at bottom" if within 100pt
+        return (maxOffset - currentOffset) < 100
+    }
+    
+    private func updateContentInset() {
+        guard let scrollView = scrollView else { return }
+        
+        // The composer's paddingBottom from animatedPaddingStyle:
+        // - Keyboard closed: safeAreaBottom + Spacing.sm
+        // - Keyboard open: Spacing.sm (8)
+        let keyboardOpenPadding: CGFloat = 8  // Spacing.sm from JS
+        
+        let totalInset: CGFloat
+        if keyboardHeight > 0 {
+            // Keyboard open: base + keyboard + small padding
+            totalInset = baseBottomInset + keyboardHeight + keyboardOpenPadding
+        } else {
+            // Keyboard closed: base + safe area
+            totalInset = baseBottomInset + safeAreaBottom
+        }
+        
+        scrollView.contentInset.bottom = totalInset
+        scrollView.verticalScrollIndicatorInsets.bottom = totalInset
+        
+        print("⌨️ [KeyboardHandler] contentInset.bottom = \(totalInset) (keyboard=\(keyboardHeight), base=\(baseBottomInset))")
+    }
+    
+    private func scrollToBottom(animated: Bool) {
+        guard let scrollView = scrollView else { return }
+        
+        let contentHeight = scrollView.contentSize.height
+        let scrollViewHeight = scrollView.bounds.height
+        let bottomInset = scrollView.contentInset.bottom
+        let maxOffset = max(0, contentHeight - scrollViewHeight + bottomInset)
+        
+        scrollView.setContentOffset(CGPoint(x: 0, y: maxOffset), animated: animated)
+        print("⌨️ [KeyboardHandler] scrollToBottom: offset=\(maxOffset)")
+    }
+    
+    // MARK: - Public API
+    
+    private var tapGesture: UITapGestureRecognizer?
+    private var contentSizeObservation: NSKeyValueObservation?
+    
+    func attach(to scrollView: UIScrollView) {
+        self.scrollView = scrollView
+        scrollView.delegate = self
+        updateContentInset()
+        
+        // Add tap gesture to dismiss keyboard
+        let tap = UITapGestureRecognizer(target: self, action: #selector(handleTap(_:)))
+        tap.cancelsTouchesInView = false // Allow other touches to pass through
+        tap.delegate = self
+        scrollView.addGestureRecognizer(tap)
+        tapGesture = tap
+        
+        // Observe content size changes
+        contentSizeObservation = scrollView.observe(\.contentSize, options: [.new, .old]) { [weak self] scrollView, change in
+            guard let self = self else { return }
+            // Check position when content size changes
+            DispatchQueue.main.async {
+                self.checkAndUpdateScrollPosition()
+            }
+        }
+        
+        print("⌨️ [KeyboardHandler] attached to scroll view with tap-to-dismiss, scroll delegate, and content size observer")
+    }
+    
+    // MARK: - UIScrollViewDelegate
+    
+    func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        checkAndUpdateScrollPosition()
+    }
+    
+    /// Check scroll position and notify delegate if changed
+    private func checkAndUpdateScrollPosition() {
+        guard let scrollView = scrollView else { return }
+        
+        // Only show button if content exceeds viewport
+        let contentExceedsViewport = scrollView.contentSize.height > scrollView.bounds.height
+        
+        if !contentExceedsViewport {
+            if !isAtBottom {
+                isAtBottom = true
+                delegate?.scrollHandler(self, didUpdateScrollPosition: true)
+            }
+            return
+        }
+        
+        let newIsAtBottom = isNearBottom(scrollView)
+        if newIsAtBottom != isAtBottom {
+            isAtBottom = newIsAtBottom
+            delegate?.scrollHandler(self, didUpdateScrollPosition: isAtBottom)
+        }
+    }
+    
+    /// Public method to scroll to bottom
+    func scrollToBottomAnimated() {
+        scrollToBottom(animated: true)
+    }
+    
+    /// Called to recheck position (e.g., after content changes)
+    func recheckScrollPosition() {
+        checkAndUpdateScrollPosition()
+    }
+    
+    @objc private func handleTap(_ gesture: UITapGestureRecognizer) {
+        // Dismiss keyboard by ending editing on the window
+        scrollView?.window?.endEditing(true)
+    }
+    
+    // MARK: - UIGestureRecognizerDelegate
+    
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+        // Allow tap gesture to work alongside scroll gestures
+        return true
+    }
+    
+    func setBaseInset(_ inset: CGFloat) {
+        print("⌨️ [KeyboardHandler] setBaseInset: \(inset), scrollView: \(scrollView != nil ? "attached" : "nil")")
+        baseBottomInset = inset
+        updateContentInset()
+    }
+    
+    /// Scroll so that new content appears at the top of the visible area (ChatGPT-style).
+    /// This leaves empty space below for the response to stream in.
+    /// - Parameter estimatedNewContentHeight: Approximate height of new content to show at top
+    func scrollNewContentToTop(estimatedHeight: CGFloat = 100) {
+        guard let scrollView = scrollView else { return }
+        
+        // Small delay to let content layout settle
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
+            guard let self = self, let scrollView = self.scrollView else { return }
+            
+            let contentHeight = scrollView.contentSize.height
+            let visibleHeight = scrollView.bounds.height
+            let topInset = scrollView.contentInset.top
+            
+            // Calculate offset to show new content at top:
+            // We want the bottom portion of content (new messages) to appear at the top of screen
+            // Offset = total content - visible area + top inset + small padding for the message
+            let targetOffset = contentHeight - visibleHeight + topInset + estimatedHeight
+            
+            // Only scroll if content is tall enough
+            let minOffset = -topInset
+            let offset = max(minOffset, targetOffset)
+            
+            UIView.animate(withDuration: 0.3, delay: 0, options: .curveEaseOut) {
+                scrollView.contentOffset = CGPoint(x: 0, y: offset)
+            }
+            
+            print("⌨️ [KeyboardHandler] scrollNewContentToTop: offset=\(offset), contentHeight=\(contentHeight)")
+        }
+    }
+}
+

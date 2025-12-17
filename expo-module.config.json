@@ -1,9 +1,11 @@
 {
-  "platforms": ["apple", "android", "web"],
+  "platforms": ["apple", "android"],
   "apple": {
-    "modules": ["LaunchHQReactNativeKeyboardComposerModule"]
+    "modules": ["KeyboardComposerModule"]
   },
   "android": {
-    "modules": ["expo.modules.launchhq.reactnativekeyboardcomposer.LaunchHQReactNativeKeyboardComposerModule"]
+    "modules": [
+      "expo.modules.launchhq.reactnativekeyboardcomposer.KeyboardComposerModule"
+    ]
   }
 }

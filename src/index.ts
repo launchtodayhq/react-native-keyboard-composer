@@ -1,5 +1,24 @@
-// Reexport the native module. On web, it will be resolved to LaunchHQReactNativeKeyboardComposerModule.web.ts
-// and on native platforms to LaunchHQReactNativeKeyboardComposerModule.ts
-export { default } from './LaunchHQReactNativeKeyboardComposerModule';
-export { default as LaunchHQReactNativeKeyboardComposerView } from './LaunchHQReactNativeKeyboardComposerView';
-export * from  './LaunchHQReactNativeKeyboardComposer.types';
+// Main component export
+export { default as KeyboardComposer } from "./KeyboardComposerView";
+
+// Native keyboard-aware wrapper for scroll views
+export {
+  KeyboardAwareWrapper,
+  type KeyboardAwareWrapperProps,
+} from "./KeyboardAwareWrapper";
+
+// Module with constants
+export {
+  default as KeyboardComposerModule,
+  constants,
+} from "./KeyboardComposerModule";
+
+// Types
+export type {
+  KeyboardComposerProps,
+  KeyboardComposerRef,
+  KeyboardComposerViewProps,
+  KeyboardComposerConstants,
+  TextEventPayload,
+  HeightEventPayload,
+} from "./KeyboardComposer.types";
