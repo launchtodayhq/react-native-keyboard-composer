@@ -26,14 +26,12 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
     override init() {
         super.init()
         setupKeyboardObservers()
-        print("⌨️ [KeyboardHandler] initialized")
     }
     
     deinit {
         NotificationCenter.default.removeObserver(self)
         contentSizeObservation?.invalidate()
         contentSizeObservation = nil
-        print("⌨️ [KeyboardHandler] deinit")
     }
     
     private func setupKeyboardObservers() {
@@ -72,8 +70,6 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
         }
         keyboardHeight = newKeyboardHeight
         
-        print("⌨️ [KeyboardHandler] keyboard showing: height=\(keyboardHeight), wasAtBottom=\(wasAtBottom), isInitialShow=\(isInitialShow)")
-        
         // Use raw UIView.animate with keyboard's exact animation curve
         // The curve value (7) is converted to animation options by shifting left 16 bits
         let animationOptions = UIView.AnimationOptions(rawValue: curveValue << 16)
@@ -108,8 +104,6 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
         
         keyboardHeight = 0
         isKeyboardVisible = false  // Reset flag when keyboard hides
-        
-        print("⌨️ [KeyboardHandler] keyboard hiding")
         
         // Use raw UIView.animate with keyboard's exact animation curve
         let animationOptions = UIView.AnimationOptions(rawValue: curveValue << 16)
@@ -163,8 +157,6 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
         if let savedOffset = savedOffset {
             scrollView.contentOffset = savedOffset
         }
-        
-        print("⌨️ [KeyboardHandler] contentInset.bottom = \(totalInset) (keyboard=\(keyboardHeight), base=\(baseBottomInset))")
     }
     
     private func scrollToBottom(animated: Bool) {
@@ -176,7 +168,6 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
         let maxOffset = max(0, contentHeight - scrollViewHeight + bottomInset)
         
         scrollView.setContentOffset(CGPoint(x: 0, y: maxOffset), animated: animated)
-        print("⌨️ [KeyboardHandler] scrollToBottom: offset=\(maxOffset)")
     }
     
     // MARK: - Public API
@@ -204,8 +195,6 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
                 self.checkAndUpdateScrollPosition()
             }
         }
-        
-        print("⌨️ [KeyboardHandler] attached to scroll view with tap-to-dismiss, scroll delegate, and content size observer")
     }
     
     // MARK: - UIScrollViewDelegate
@@ -265,7 +254,6 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
     }
     
     func setBaseInset(_ inset: CGFloat, preserveScrollPosition: Bool = false) {
-        print("⌨️ [KeyboardHandler] setBaseInset: \(inset), scrollView: \(scrollView != nil ? "attached" : "nil"), preserve=\(preserveScrollPosition)")
         baseBottomInset = inset
         updateContentInset(preserveScrollPosition: preserveScrollPosition)
     }
@@ -286,7 +274,6 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
         let nearBottom = distanceFromBottom < 100
         
         guard nearBottom else {
-            print("⌨️ [KeyboardHandler] adjustScrollForComposerGrowth: skipped (not near bottom, dist=\(distanceFromBottom))")
             return
         }
         
@@ -297,8 +284,6 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
         let bottomInset = currentInset + delta
         let maxOffset = max(0, contentHeight - scrollViewHeight + bottomInset)
         let clampedOffset = max(0, min(newOffset, maxOffset))
-        
-        print("⌨️ [KeyboardHandler] adjustScrollForComposerGrowth: delta=\(delta), offset \(currentOffset) -> \(clampedOffset)")
         
         // Apply immediately
         scrollView.setContentOffset(CGPoint(x: 0, y: clampedOffset), animated: false)
@@ -330,8 +315,6 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
             UIView.animate(withDuration: 0.3, delay: 0, options: .curveEaseOut) {
                 scrollView.contentOffset = CGPoint(x: 0, y: offset)
             }
-            
-            print("⌨️ [KeyboardHandler] scrollNewContentToTop: offset=\(offset), contentHeight=\(contentHeight)")
         }
     }
 }

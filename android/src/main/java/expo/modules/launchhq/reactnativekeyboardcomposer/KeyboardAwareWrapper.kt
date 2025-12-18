@@ -35,8 +35,8 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
         private const val TAG = "KeyboardAwareWrapper"
         private const val CONTENT_GAP_DP = 24
         private const val COMPOSER_KEYBOARD_GAP_DP = 8
-        private const val BUTTON_SIZE_DP = 56
-        private const val BUTTON_PADDING_DP = 6
+        private const val BUTTON_SIZE_DP = 32  // Match iOS (was 56)
+        private const val BUTTON_PADDING_DP = 3
     }
     
     // Track actual composer height (measured from view, not prop)
@@ -47,15 +47,21 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
         get() = _extraBottomInset
         set(value) {
             val oldValue = _extraBottomInset
-            val delta = value - oldValue
             _extraBottomInset = value
             
-            Log.d(TAG, "📐 extraBottomInset: $oldValue -> $value, delta=$delta")
+            Log.d(TAG, "extraBottomInset: $oldValue -> $value (prop only, scroll handled by native layout listener)")
             
-            // When composer grows, scroll content up to keep last message visible
-            if (delta > 0) {
-                adjustScrollForComposerGrowth(delta.toInt())
-            }
+            // DON'T adjust scroll here - this causes double-handling because:
+            // 1. Native layout listener detects height change and adjusts scroll
+            // 2. JS receives onHeightChange, updates state
+            // 3. Prop comes back here - if we adjust scroll again, it causes jitter
+            // 
+            // The native layout listener (setupComposerHeightListener) handles scroll adjustment.
+            // This prop is only used as a fallback for padding when lastComposerHeight is 0.
+            
+            // Update padding and button position only
+            updateScrollPadding()
+            updateScrollButtonPosition()
         }
     
     var scrollToTopTrigger: Double = 0.0
@@ -76,7 +82,11 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
     
     private var scrollToBottomButton: ImageButton? = null
     private var isScrollButtonVisible = false
+    private var isAnimatingScrollButton = false
     private var isAtBottom = true
+    
+    // Layout listener to detect composer height changes
+    private var composerLayoutListener: View.OnLayoutChangeListener? = null
 
     init {
         clipChildren = false
@@ -88,7 +98,6 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
         super.onAttachedToWindow()
         ViewCompat.setOnApplyWindowInsetsListener(this) { _, insets ->
             safeAreaBottom = insets.getInsets(WindowInsetsCompat.Type.systemBars()).bottom
-            Log.d(TAG, "📐 Safe area bottom: $safeAreaBottom")
             insets
         }
     }
@@ -114,24 +123,6 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
             button.bringToFront()
         }
         
-        // Detect composer height changes from actual view (more reliable than props with Fabric)
-        composerView?.let { composer ->
-            val currentHeight = composer.height
-            if (currentHeight > 0 && kotlin.math.abs(currentHeight - lastComposerHeight) > 1) {
-                val delta = currentHeight - lastComposerHeight
-                Log.d(TAG, "📐 composer height changed: $lastComposerHeight -> $currentHeight, delta=$delta")
-                
-                if (delta > 0 && lastComposerHeight > 0) {
-                    // Composer grew - adjust scroll if near bottom
-                    adjustScrollForComposerGrowth(delta)
-                }
-                
-                // Update base inset with actual composer height
-                updateScrollPadding()
-                lastComposerHeight = currentHeight
-            }
-        }
-        
         updateScrollButtonPosition()
         
         if (!hasAttached) {
@@ -142,9 +133,11 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
     private fun updateScrollPadding() {
         val sv = scrollView ?: return
         val contentGap = dpToPx(CONTENT_GAP_DP)
-        val composerHeight = if (lastComposerHeight > 0) lastComposerHeight else extraBottomInset.toInt()
+        // lastComposerHeight is in pixels, extraBottomInset is in DP (from JS)
+        val composerHeight = if (lastComposerHeight > 0) lastComposerHeight else dpToPx(extraBottomInset.toInt())
         val bottomSpace = if (currentKeyboardHeight > 0) currentKeyboardHeight else safeAreaBottom
         val finalPadding = composerHeight + contentGap + bottomSpace
+        Log.d(TAG, "updateScrollPadding: composerHeight=$composerHeight, contentGap=$contentGap, bottomSpace=$bottomSpace, finalPadding=$finalPadding")
         sv.setPadding(sv.paddingLeft, sv.paddingTop, sv.paddingRight, finalPadding)
     }
 
@@ -153,6 +146,8 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
         
         val sv = findScrollView(this)
         val composer = findComposerView(this)
+        
+        Log.d(TAG, "findAndAttachViews: scrollView=${sv != null}, composer=${composer != null}")
         
         if (sv != null) {
             scrollView = sv
@@ -174,14 +169,113 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
                 it.clipToPadding = false
             }
             
+            // Initialize lastComposerHeight from actual composer
+            composer?.let { comp ->
+                if (comp.height > 0) {
+                    lastComposerHeight = comp.height
+                }
+            }
+            
             hasAttached = true
-            Log.d(TAG, "✅ Found ScrollView, composer=${composer != null}, container depth=$depth")
             setupKeyboardAnimation(sv, composer, composerContainer)
             setupScrollListener(sv)
+            setupComposerHeightListener(composer)
             updateScrollButtonPosition()
         } else {
             postDelayed({ findAndAttachViews() }, 100)
         }
+    }
+    
+    private fun setupComposerHeightListener(composer: KeyboardComposerView?) {
+        composer ?: return
+        
+        Log.d(TAG, "setupComposerHeightListener: setting up OnLayoutChangeListener")
+        
+        // Initialize with current height if available
+        if (composer.height > 0) {
+            lastComposerHeight = composer.height
+            Log.d(TAG, "setupComposerHeightListener: initial height=$lastComposerHeight")
+        }
+        
+        composerLayoutListener = View.OnLayoutChangeListener { _, _, _, _, bottom, _, _, _, oldBottom ->
+            val newHeight = bottom - 0  // height = bottom - top, but top is always 0 for this view
+            val oldHeight = oldBottom - 0
+            
+            Log.d(TAG, "OnLayoutChangeListener: newHeight=$newHeight, oldHeight=$oldHeight, lastComposerHeight=$lastComposerHeight")
+            
+            if (newHeight > 0 && newHeight != lastComposerHeight) {
+                val delta = newHeight - lastComposerHeight
+                Log.d(TAG, "OnLayoutChangeListener: height changed! delta=$delta")
+                
+                // Store old height before updating
+                val oldComposerHeight = lastComposerHeight
+                lastComposerHeight = newHeight
+                
+                // IMPORTANT: Update padding FIRST so maxScroll is correct for scrolling
+                updateScrollPadding()
+                
+                // Now adjust scroll position (padding is already updated)
+                if (oldComposerHeight > 0) {
+                    handleComposerHeightChange(delta)
+                }
+                
+                updateScrollButtonPosition()
+            }
+        }
+        
+        composer.addOnLayoutChangeListener(composerLayoutListener)
+    }
+    
+    private fun handleComposerHeightChange(delta: Int) {
+        val sv = scrollView ?: return
+        
+        val currentScrollY = sv.scrollY
+        val currentMaxScroll = getMaxScroll(sv)  // This now reflects the updated padding
+        val nearBottom = isNearBottom(sv, dpToPx(100))
+        val distanceFromBottom = currentMaxScroll - currentScrollY
+        
+        Log.d(TAG, "handleComposerHeightChange: delta=$delta, scrollY=$currentScrollY, maxScroll=$currentMaxScroll, distFromBottom=$distanceFromBottom, nearBottom=$nearBottom")
+        
+        // Only adjust if near bottom (within 100dp)
+        if (!nearBottom) {
+            Log.d(TAG, "handleComposerHeightChange: NOT near bottom (dist=$distanceFromBottom > ${dpToPx(100)}), skipping scroll adjust")
+            return
+        }
+        
+        if (delta > 0) {
+            // Composer grew: scroll UP to keep last message visible
+            // Padding already updated, so maxScroll is correct
+            val newScrollY = (currentScrollY + delta).coerceIn(0, currentMaxScroll)
+            
+            Log.d(TAG, "handleComposerHeightChange: GROW - scrolling $currentScrollY -> $newScrollY (maxScroll=$currentMaxScroll)")
+            sv.scrollTo(0, newScrollY)
+            
+            // Verify the scroll actually happened
+            val actualScrollY = sv.scrollY
+            if (actualScrollY != newScrollY) {
+                Log.w(TAG, "handleComposerHeightChange: SCROLL FAILED! wanted=$newScrollY, actual=$actualScrollY")
+            }
+        } else if (delta < 0) {
+            // Composer shrank: scroll DOWN to maintain the gap
+            // Padding already updated, so maxScroll already decreased
+            val absDelta = -delta  // Make positive
+            val newScrollY = (currentScrollY - absDelta).coerceIn(0, currentMaxScroll)
+            
+            Log.d(TAG, "handleComposerHeightChange: SHRINK - scrolling $currentScrollY -> $newScrollY (maxScroll=$currentMaxScroll)")
+            sv.scrollTo(0, newScrollY)
+            
+            // Verify the scroll actually happened
+            val actualScrollY = sv.scrollY
+            if (actualScrollY != newScrollY) {
+                Log.w(TAG, "handleComposerHeightChange: SCROLL FAILED! wanted=$newScrollY, actual=$actualScrollY")
+            }
+        }
+    }
+    
+    private fun isNearBottom(sv: ScrollView, threshold: Int): Boolean {
+        val maxScroll = getMaxScroll(sv)
+        if (maxScroll <= 0) return true
+        return (maxScroll - sv.scrollY) <= threshold
     }
 
     private fun findScrollView(view: View): ScrollView? {
@@ -210,23 +304,22 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
     }
     
     private fun isNearBottom(sv: ScrollView): Boolean {
-        val maxScroll = getMaxScroll(sv)
-        if (maxScroll <= 0) return true
-        return (maxScroll - sv.scrollY) <= dpToPx(50)
+        return isNearBottom(sv, dpToPx(50))
     }
 
     private fun setupKeyboardAnimation(sv: ScrollView, composer: KeyboardComposerView?, container: View?) {
-        Log.d(TAG, "⌨️ Setting up keyboard animation")
-        
         sv.clipToPadding = false
         
         val contentGap = dpToPx(CONTENT_GAP_DP)
         val composerGap = dpToPx(COMPOSER_KEYBOARD_GAP_DP)
-        val initialPadding = extraBottomInset.toInt() + contentGap + safeAreaBottom
+        // extraBottomInset is in DP (from JS), convert to pixels
+        // But prefer lastComposerHeight if available (already in pixels)
+        val composerHeight = if (lastComposerHeight > 0) lastComposerHeight else dpToPx(extraBottomInset.toInt())
+        val initialPadding = composerHeight + contentGap + safeAreaBottom
         sv.setPadding(sv.paddingLeft, sv.paddingTop, sv.paddingRight, initialPadding)
         container?.translationY = -composerGap.toFloat()
         
-        Log.d(TAG, "📐 INIT - extraBottom=${extraBottomInset.toInt()}, gap=$contentGap, safeArea=$safeAreaBottom, totalPadding=$initialPadding, composerGap=$composerGap")
+        Log.d(TAG, "setupKeyboardAnimation: composerHeight=$composerHeight, contentGap=$contentGap, safeArea=$safeAreaBottom, initialPadding=$initialPadding")
         
         val callback = object : WindowInsetsAnimationCompat.Callback(DISPATCH_MODE_CONTINUE_ON_SUBTREE) {
             
@@ -240,7 +333,6 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
                     isOpening = true
                     wasAtBottom = isNearBottom(sv)
                     baseScrollY = sv.scrollY
-                    Log.d(TAG, "⌨️ onPrepare OPEN - scrollY=${sv.scrollY}, maxScroll=$maxScroll, contentHeight=$contentHeight, wasAtBottom=$wasAtBottom")
                 } else {
                     isOpening = false
                     wasAtBottom = isNearBottom(sv)
@@ -250,7 +342,6 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
                     if (wasAtBottom) {
                         baseScrollY = closingStartScrollY - (maxKeyboardHeight - safeAreaBottom).coerceAtLeast(0)
                     }
-                    Log.d(TAG, "⌨️ onPrepare CLOSE - scrollY=${sv.scrollY}, maxScroll=$maxScroll, contentHeight=$contentHeight, wasAtBottom=$wasAtBottom, baseScrollY=$baseScrollY")
                 }
             }
 
@@ -301,13 +392,15 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
                 container?.translationY = -(effectiveKeyboard + composerGap).toFloat()
                 
                 val bottomSpace = if (keyboardHeight > 0) keyboardHeight else safeAreaBottom
-                val finalPadding = extraBottomInset.toInt() + contentGap + bottomSpace
+                // Use measured composer height (pixels) or convert extraBottomInset from DP
+                val composerHeight = if (lastComposerHeight > 0) lastComposerHeight else dpToPx(extraBottomInset.toInt())
+                val finalPadding = composerHeight + contentGap + bottomSpace
                 sv.setPadding(sv.paddingLeft, sv.paddingTop, sv.paddingRight, finalPadding)
                 
                 val maxScroll = getMaxScroll(sv)
-                val contentHeight = sv.getChildAt(0)?.height ?: 0
+                val currentScrollY = sv.scrollY
                 
-                Log.d(TAG, "📐 onEnd - keyboard=$keyboardHeight, effectiveKb=$effectiveKeyboard, padding=$finalPadding, maxScroll=$maxScroll, contentHeight=$contentHeight")
+                Log.d(TAG, "onEnd: keyboardHeight=$keyboardHeight, wasAtBottom=$wasAtBottom, currentScrollY=$currentScrollY, maxScroll=$maxScroll")
                 
                 if (wasAtBottom) {
                     val desiredScrollY = baseScrollY + effectiveKeyboard
@@ -316,10 +409,17 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
                     val actualScrollY = sv.scrollY
                     val remainingTranslation = actualScrollY - desiredScrollY
                     sv.getChildAt(0)?.translationY = if (maxScroll <= 0) 0f else remainingTranslation.toFloat()
-                    Log.d(TAG, "⌨️ onEnd SCROLL - baseScrollY=$baseScrollY, desired=$desiredScrollY, final=$finalScrollY, actual=$actualScrollY")
                 } else {
+                    // User was NOT at bottom - reset translation and clamp scroll position
                     sv.getChildAt(0)?.translationY = 0f
-                    Log.d(TAG, "⌨️ onEnd - not at bottom, translation reset")
+                    
+                    // IMPORTANT: When keyboard closes, maxScroll decreases.
+                    // If current scroll position is now past maxScroll, clamp it.
+                    // This prevents the gap that appears when user scrolled while keyboard was open.
+                    if (currentScrollY > maxScroll && maxScroll >= 0) {
+                        Log.d(TAG, "onEnd: clamping scroll from $currentScrollY to $maxScroll")
+                        sv.scrollY = maxScroll
+                    }
                 }
                 
                 updateScrollButtonPosition()
@@ -361,8 +461,6 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
         }
         addView(button, params)
         scrollToBottomButton = button
-        
-        Log.d(TAG, "📍 Scroll button created")
     }
     
     private fun createScrollButtonDrawable(size: Int): Drawable {
@@ -375,7 +473,7 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
             private val arrowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 color = getBackgroundColor()
                 style = Paint.Style.STROKE
-                strokeWidth = dpToPx(3).toFloat()
+                strokeWidth = dpToPx(2).toFloat()  // Thinner for smaller 32dp button
                 strokeCap = Paint.Cap.ROUND
                 strokeJoin = Paint.Join.ROUND
             }
@@ -429,15 +527,47 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
     }
     
     private fun updateScrollButtonPosition() {
-        val button = scrollToBottomButton ?: return
+        // Don't update position during show/hide animation
+        if (isAnimatingScrollButton) return
         
+        val button = scrollToBottomButton ?: return
+        button.translationY = calculateButtonTranslationY()
+    }
+    
+    private fun showScrollButton() {
+        if (isScrollButtonVisible) return
+        isScrollButtonVisible = true
+        isAnimatingScrollButton = true
+        
+        scrollToBottomButton?.let { button ->
+            // Calculate correct base position
+            val baseTranslationY = calculateButtonTranslationY()
+            
+            // Start 12dp lower (slide up animation)
+            button.translationY = baseTranslationY + dpToPx(12)
+            button.alpha = 0f
+            button.visibility = View.VISIBLE
+            
+            button.animate()
+                .alpha(1f)
+                .translationY(baseTranslationY)
+                .setDuration(250)
+                .setInterpolator(android.view.animation.DecelerateInterpolator())
+                .setListener(object : AnimatorListenerAdapter() {
+                    override fun onAnimationEnd(animation: Animator) {
+                        isAnimatingScrollButton = false
+                    }
+                })
+                .start()
+        }
+    }
+    
+    private fun calculateButtonTranslationY(): Float {
         val buttonPadding = dpToPx(BUTTON_PADDING_DP)
         val contentGap = dpToPx(CONTENT_GAP_DP)
         val composerGap = dpToPx(COMPOSER_KEYBOARD_GAP_DP)
-        
-        // Use actual measured composer height (not prop which may include padding)
-        val composerHeight = if (lastComposerHeight > 0) lastComposerHeight else extraBottomInset.toInt()
-        
+        // Use measured composer height (pixels) or convert extraBottomInset from DP
+        val composerHeight = if (lastComposerHeight > 0) lastComposerHeight else dpToPx(extraBottomInset.toInt())
         val effectiveKeyboard = (currentKeyboardHeight - safeAreaBottom).coerceAtLeast(0)
         
         val bottomOffset = if (effectiveKeyboard > 0) {
@@ -446,72 +576,39 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
             safeAreaBottom + composerHeight + contentGap + buttonPadding
         }
         
-        button.translationY = -bottomOffset.toFloat()
-    }
-    
-    private fun showScrollButton() {
-        if (isScrollButtonVisible) return
-        isScrollButtonVisible = true
-        
-        scrollToBottomButton?.let { button ->
-            button.visibility = View.VISIBLE
-            button.animate()
-                .alpha(1f)
-                .setDuration(200)
-                .setListener(null)
-                .start()
-        }
-        Log.d(TAG, "📍 Show scroll button")
+        return -bottomOffset.toFloat()
     }
     
     private fun hideScrollButton() {
         if (!isScrollButtonVisible) return
         isScrollButtonVisible = false
+        isAnimatingScrollButton = true
         
         scrollToBottomButton?.let { button ->
+            // Get current position (slide down animation)
+            val currentTranslationY = button.translationY
+            
             button.animate()
                 .alpha(0f)
-                .setDuration(200)
+                .translationY(currentTranslationY + dpToPx(12))
+                .setDuration(180)
+                .setInterpolator(android.view.animation.AccelerateInterpolator())
                 .setListener(object : AnimatorListenerAdapter() {
                     override fun onAnimationEnd(animation: Animator) {
                         button.visibility = View.GONE
+                        // Reset to correct position for next show
+                        updateScrollButtonPosition()
+                        isAnimatingScrollButton = false
                     }
                 })
                 .start()
         }
-        Log.d(TAG, "📍 Hide scroll button")
     }
     
     private fun scrollToBottom() {
         val sv = scrollView ?: return
         val maxScroll = getMaxScroll(sv)
         sv.smoothScrollTo(0, maxScroll)
-        Log.d(TAG, "📍 Scroll to bottom: $maxScroll")
-    }
-    
-    private fun adjustScrollForComposerGrowth(delta: Int) {
-        val sv = scrollView ?: return
-        if (delta <= 0) return
-        
-        val currentScrollY = sv.scrollY
-        val currentMaxScroll = getMaxScroll(sv)
-        val distanceFromBottom = currentMaxScroll - currentScrollY
-        
-        // Only adjust if we're near the bottom (within 100dp, matching iOS)
-        if (distanceFromBottom > dpToPx(100)) {
-            Log.d(TAG, "📍 adjustScrollForComposerGrowth: skipped (not near bottom, dist=$distanceFromBottom)")
-            return
-        }
-        
-        // Scroll up by the delta amount immediately
-        val newScrollY = currentScrollY + delta
-        
-        // Account for pending padding increase in maxScroll calculation
-        val maxScroll = currentMaxScroll + delta
-        val clampedScrollY = newScrollY.coerceIn(0, maxScroll)
-        
-        sv.scrollTo(0, clampedScrollY)
-        Log.d(TAG, "📍 adjustScrollForComposerGrowth: delta=$delta, $currentScrollY -> $clampedScrollY")
     }
     
     private fun checkAndUpdateScrollPosition() {
@@ -547,7 +644,5 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
         sv.getChildAt(0)?.viewTreeObserver?.addOnGlobalLayoutListener {
             post { checkAndUpdateScrollPosition() }
         }
-        
-        Log.d(TAG, "📍 Scroll listener attached")
     }
 }
