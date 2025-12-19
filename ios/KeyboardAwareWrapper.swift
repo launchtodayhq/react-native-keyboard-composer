@@ -22,7 +22,7 @@ class KeyboardAwareWrapper: ExpoView, KeyboardAwareScrollHandlerDelegate {
     
     // Constants matching Android
     private let CONTENT_GAP: CGFloat = 24
-    private let COMPOSER_KEYBOARD_GAP: CGFloat = 8
+    private let COMPOSER_KEYBOARD_GAP: CGFloat = 10
     
     // KVO observations
     private var extraBottomInsetObservation: NSKeyValueObservation?

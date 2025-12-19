@@ -120,6 +120,11 @@ class KeyboardComposerView: ExpoView {
     let swipeDown = UISwipeGestureRecognizer(target: self, action: #selector(handleSwipeDown))
     swipeDown.direction = .down
     textView.addGestureRecognizer(swipeDown)
+    
+    // Swipe up gesture to focus and open keyboard
+    let swipeUp = UISwipeGestureRecognizer(target: self, action: #selector(handleSwipeUp))
+    swipeUp.direction = .up
+    textView.addGestureRecognizer(swipeUp)
 
     // Placeholder
     placeholderLabel.text = placeholder
@@ -183,6 +188,16 @@ class KeyboardComposerView: ExpoView {
   }
 
   // MARK: - Keyboard Layout Guide Integration
+  override func willMove(toWindow newWindow: UIWindow?) {
+    super.willMove(toWindow: newWindow)
+    
+    // If moving to nil window, view is being removed (e.g., navigating away)
+    // Dismiss keyboard early to prevent it staying open during transition
+    if newWindow == nil {
+      textView.resignFirstResponder()
+    }
+  }
+  
   override func didMoveToWindow() {
     super.didMoveToWindow()
 
@@ -340,6 +355,10 @@ class KeyboardComposerView: ExpoView {
   // MARK: - Gestures
   @objc private func handleSwipeDown() {
     textView.resignFirstResponder()
+  }
+  
+  @objc private func handleSwipeUp() {
+    textView.becomeFirstResponder()
   }
   
   // MARK: - Public methods for JS
