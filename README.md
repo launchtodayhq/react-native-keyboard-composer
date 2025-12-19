@@ -246,6 +246,17 @@ The library handles three key scenarios:
 | Android  | ✅ Native implementation |
 | Web      | ❌ Not supported         |
 
+## Gestures (iOS)
+
+The composer supports intuitive swipe gestures on the input field:
+
+| Gesture    | Action                                   |
+| ---------- | ---------------------------------------- |
+| Swipe down | Dismisses the keyboard                   |
+| Swipe up   | Focuses the input and opens the keyboard |
+
+These gestures provide a natural way to control the keyboard without reaching for the keyboard dismiss button or tapping outside.
+
 ## Requirements
 
 - React Native 0.71+
