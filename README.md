@@ -439,6 +439,12 @@ Add these scripts to your consuming app's `package.json` for easy switching:
 
 Contributions are welcome! Please read our contributing guidelines before submitting a PR.
 
+## Support
+
+If you find this library helpful, consider supporting its development:
+
+[Buy Me a Coffee](https://www.buymeacoffee.com/paulmbw)
+
 ## License
 
 MIT © [LaunchHQ](https://launchtoday.dev)

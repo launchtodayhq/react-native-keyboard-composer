@@ -11,5 +11,5 @@
 # lfx_crowdfunding: # Replace with a single LFX Crowdfunding project-name e.g., cloud-foundry
 # polar: # Replace with a single Polar username
 buy_me_a_coffee: paulmbw
-thanks_dev: d/gh/paulmbw/dependencies
+# thanks_dev: d/gh/paulmbw/dependencies
 # custom: # Replace with up to 4 custom sponsorship URLs e.g., ['link1', 'link2']

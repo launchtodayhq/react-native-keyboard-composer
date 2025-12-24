@@ -7,7 +7,9 @@
     "start": "expo start",
     "android": "pnpm exec expo run:android --device",
     "ios": "pnpm exec expo run:ios --device",
-    "prebuild": "expo prebuild --clean"
+    "prebuild": "expo prebuild --clean",
+    "doctor": "npx expo doctor",
+    "fix": "npx expo install --check"
   },
   "dependencies": {
     "@legendapp/list": "^2.0.18",

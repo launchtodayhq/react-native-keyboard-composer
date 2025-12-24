@@ -10,18 +10,15 @@ const config = getDefaultConfig(projectRoot);
 // Watch the parent directory for the library source files
 config.watchFolders = [workspaceRoot];
 
-// Block the parent's node_modules react/react-native to avoid duplicates
+// Block the ENTIRE parent node_modules to avoid duplicate modules
+// Only the library source (src/) is needed from parent
 config.resolver.blockList = [
   ...Array.from(config.resolver.blockList ?? []),
-  new RegExp(path.resolve(workspaceRoot, "node_modules", "react", ".*")),
-  new RegExp(path.resolve(workspaceRoot, "node_modules", "react-native", ".*")),
+  new RegExp(path.resolve(workspaceRoot, "node_modules") + "/.*"),
 ];
 
-// Resolve modules from both the example and the parent
-config.resolver.nodeModulesPaths = [
-  path.resolve(projectRoot, "node_modules"),
-  path.resolve(workspaceRoot, "node_modules"),
-];
+// Only resolve modules from example's node_modules
+config.resolver.nodeModulesPaths = [path.resolve(projectRoot, "node_modules")];
 
 // Map the library to the parent directory source
 config.resolver.extraNodeModules = {
