@@ -1,7 +1,9 @@
 package expo.modules.launchhq.reactnativekeyboardcomposer
 
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.content.Context
+import android.content.ContextWrapper
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
@@ -16,6 +18,7 @@ import android.view.Gravity
 import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewGroup
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.FrameLayout
@@ -34,6 +37,9 @@ class KeyboardComposerView(context: Context, appContext: AppContext) : ExpoView(
     private val onKeyboardHeightChange by EventDispatcher()
     private val onComposerFocus by EventDispatcher()
     private val onComposerBlur by EventDispatcher()
+    private val onPTTPress by EventDispatcher()
+    private val onPTTPressIn by EventDispatcher()
+    private val onPTTPressOut by EventDispatcher()
 
     // MARK: - Props
     var placeholderText: String = "Type a message..."
@@ -90,19 +96,70 @@ class KeyboardComposerView(context: Context, appContext: AppContext) : ExpoView(
             updateButtonAppearance()
         }
 
+    var showPTTButton: Boolean = false
+        set(value) {
+            field = value
+            pttButton.visibility = if (value) View.VISIBLE else View.GONE
+            updateEditTextPadding()
+            requestLayout()
+        }
+
+    var pttEnabled: Boolean = true
+        set(value) {
+            field = value
+            updatePTTEnabledState()
+        }
+
+    var pttState: String = "available"
+        set(value) {
+            field = value
+            updatePTTButtonAppearance()
+        }
+
+    var pttPressedScale: Float = 0.92f
+        set(value) {
+            field = value
+        }
+
+    var pttPressedOpacity: Float = 0.85f
+        set(value) {
+            field = value
+        }
+
     // MARK: - UI Elements
+    private val backgroundView: FrameLayout
     private val editText: EditText
     private val sendButton: ImageButton
+    private val pttButton: ImageButton
     private var currentHeight: Int = 0
     private var minHeightPx: Int = 0
     private var maxHeightPx: Int = 0
+
+    // Layout constants
+    private val buttonSize: Int
+    private val buttonPadding: Int
+    private val cornerRadius: Float
 
     init {
         minHeightPx = dpToPx(minHeightDp)
         maxHeightPx = dpToPx(maxHeightDp)
         currentHeight = minHeightPx
+        buttonSize = dpToPx(48f)
+        buttonPadding = dpToPx(8f)
+        cornerRadius = dpToPx(24f).toFloat()
         
         setBackgroundColor(Color.TRANSPARENT)
+
+        // Solid background container with rounded corners (no blur on Android)
+        backgroundView = FrameLayout(context).apply {
+            setBackgroundColor(getSolidBackgroundColor())
+            outlineProvider = object : android.view.ViewOutlineProvider() {
+                override fun getOutline(view: View, outline: android.graphics.Outline) {
+                    outline.setRoundRect(0, 0, view.width, view.height, cornerRadius)
+                }
+            }
+            clipToOutline = true
+        }
 
         editText = EditText(context).apply {
             hint = placeholderText
@@ -118,7 +175,6 @@ class KeyboardComposerView(context: Context, appContext: AppContext) : ExpoView(
             isVerticalScrollBarEnabled = true
             movementMethod = ScrollingMovementMethod.getInstance()
             gravity = Gravity.TOP or Gravity.START
-            setPadding(dpToPx(16f), dpToPx(14f), dpToPx(56f), dpToPx(14f))
             
             addTextChangedListener(object : TextWatcher {
                 override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
@@ -139,9 +195,49 @@ class KeyboardComposerView(context: Context, appContext: AppContext) : ExpoView(
                 }
             }
         }
+        updateEditTextPadding()
 
         setupEditTextTouchHandling()
 
+        // PTT Button (left side)
+        pttButton = ImageButton(context).apply {
+            setBackgroundColor(Color.TRANSPARENT)
+            scaleType = android.widget.ImageView.ScaleType.CENTER_INSIDE
+            contentDescription = "Push to talk"
+            visibility = View.GONE
+
+            setOnTouchListener { v, event ->
+                if (!pttEnabled) {
+                    true
+                } else {
+                when (event.action) {
+                    MotionEvent.ACTION_DOWN -> {
+                        v.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                        v.scaleX = pttPressedScale
+                        v.scaleY = pttPressedScale
+                        v.alpha = pttPressedOpacity
+                        onPTTPressIn(emptyMap())
+                        true
+                    }
+                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                        v.scaleX = 1f
+                        v.scaleY = 1f
+                        v.alpha = 1f
+                        onPTTPressOut(emptyMap())
+                        if (event.action == MotionEvent.ACTION_UP) {
+                            onPTTPress(emptyMap())
+                        }
+                        true
+                    }
+                    else -> false
+                }
+                }
+            }
+        }
+        updatePTTButtonAppearance()
+        updatePTTEnabledState()
+
+        // Send button (right side)
         sendButton = ImageButton(context).apply {
             setBackgroundColor(Color.TRANSPARENT)
             scaleType = android.widget.ImageView.ScaleType.CENTER_INSIDE
@@ -156,13 +252,18 @@ class KeyboardComposerView(context: Context, appContext: AppContext) : ExpoView(
             }
         }
 
-        addView(editText, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+        // Add views
+        addView(backgroundView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+        backgroundView.addView(editText, FrameLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
         
-        val buttonSize = dpToPx(48f)
-        val buttonMargin = dpToPx(2f)
+        addView(pttButton, LayoutParams(buttonSize, buttonSize).apply {
+            gravity = Gravity.START or Gravity.CENTER_VERTICAL
+            marginStart = buttonPadding / 2
+        })
+        
         addView(sendButton, LayoutParams(buttonSize, buttonSize).apply {
-            gravity = Gravity.BOTTOM or Gravity.END
-            setMargins(0, 0, buttonMargin, buttonMargin)
+            gravity = Gravity.END or Gravity.CENTER_VERTICAL
+            marginEnd = buttonPadding / 2
         })
 
         updateButtonAppearance()
@@ -171,25 +272,21 @@ class KeyboardComposerView(context: Context, appContext: AppContext) : ExpoView(
         post {
             onHeightChange(mapOf("height" to minHeightDp.toDouble()))
             
-            // Ensure placeholder is visible after layout
             if (editText.hint.isNullOrEmpty()) {
                 editText.hint = placeholderText
             }
             
-            // Re-apply hint and color after layout
             editText.setHintTextColor(getPlaceholderColor())
             editText.hint = placeholderText
             editText.requestLayout()
             editText.invalidate()
-            
-            // Second post to ensure layout is complete
-            post {
-                if (editText.width > 0 && editText.height > 0 && editText.text.isNullOrEmpty()) {
-                    editText.setHintTextColor(getPlaceholderColor())
-                    editText.invalidate()
-                }
-            }
         }
+    }
+
+    private fun updateEditTextPadding() {
+        val leftPadding = if (showPTTButton) buttonSize + buttonPadding else dpToPx(16f)
+        val rightPadding = buttonSize + buttonPadding / 2
+        editText.setPadding(leftPadding, dpToPx(14f), rightPadding, dpToPx(14f))
     }
     
     @SuppressLint("ClickableViewAccessibility")
@@ -221,8 +318,74 @@ class KeyboardComposerView(context: Context, appContext: AppContext) : ExpoView(
         onStop(emptyMap())
     }
 
+    private fun updatePTTButtonAppearance() {
+        val size = dpToPx(32f)
+        pttButton.setImageDrawable(createPTTButtonDrawable(size))
+    }
+
+    private fun createPTTButtonDrawable(size: Int): Drawable {
+        return object : Drawable() {
+            private val circlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = when (pttState.lowercase()) {
+                    "talking" -> Color.parseColor("#FF3B30")
+                    "listening" -> Color.parseColor("#007AFF")
+                    else -> getTextColor()
+                }
+                style = Paint.Style.FILL
+            }
+            
+            private val waveformPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = if (pttState.lowercase() == "available") getContrastColor() else Color.WHITE
+                style = Paint.Style.STROKE
+                strokeWidth = dpToPx(2.5f).toFloat()
+                strokeCap = Paint.Cap.ROUND
+            }
+
+            override fun draw(canvas: Canvas) {
+                val bounds = bounds
+                val cx = bounds.exactCenterX()
+                val cy = bounds.exactCenterY()
+                val radius = minOf(bounds.width(), bounds.height()) / 2f
+
+                // Draw circle background
+                canvas.drawCircle(cx, cy, radius, circlePaint)
+
+                // Draw waveform bars
+                val spacing = dpToPx(4f).toFloat()
+                val heights = floatArrayOf(0.3f, 0.55f, 0.9f, 0.55f, 0.3f)
+                val maxHeight = radius * 1.2f
+
+                var x = cx - (heights.size / 2) * spacing
+                for (heightFactor in heights) {
+                    val barHeight = maxHeight * heightFactor
+                    canvas.drawLine(x, cy - barHeight / 2, x, cy + barHeight / 2, waveformPaint)
+                    x += spacing
+                }
+            }
+
+            override fun setAlpha(alpha: Int) {
+                circlePaint.alpha = alpha
+                waveformPaint.alpha = alpha
+            }
+            
+            override fun setColorFilter(colorFilter: android.graphics.ColorFilter?) {
+                circlePaint.colorFilter = colorFilter
+                waveformPaint.colorFilter = colorFilter
+            }
+            
+            override fun getOpacity(): Int = android.graphics.PixelFormat.TRANSLUCENT
+            override fun getIntrinsicWidth(): Int = size
+            override fun getIntrinsicHeight(): Int = size
+        }
+    }
+
+    private fun updatePTTEnabledState() {
+        pttButton.isEnabled = pttEnabled
+        pttButton.alpha = if (pttEnabled) 1f else 0.4f
+    }
+
     private fun updateButtonAppearance() {
-        val size = dpToPx(44f)
+        val size = dpToPx(32f)
         val drawable = if (isStreaming) {
             createStopButtonDrawable(size)
         } else {
@@ -241,9 +404,9 @@ class KeyboardComposerView(context: Context, appContext: AppContext) : ExpoView(
             }
             
             private val arrowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = getBackgroundColor()
+                color = getContrastColor()
                 style = Paint.Style.STROKE
-                strokeWidth = dpToPx(3f).toFloat()
+                strokeWidth = dpToPx(2.5f).toFloat()
                 strokeCap = Paint.Cap.ROUND
                 strokeJoin = Paint.Join.ROUND
             }
@@ -291,7 +454,7 @@ class KeyboardComposerView(context: Context, appContext: AppContext) : ExpoView(
             }
             
             private val stopPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = getBackgroundColor()
+                color = getContrastColor()
                 style = Paint.Style.FILL
             }
 
@@ -308,9 +471,9 @@ class KeyboardComposerView(context: Context, appContext: AppContext) : ExpoView(
                 val top = cy - squareSize / 2
                 val right = cx + squareSize / 2
                 val bottom = cy + squareSize / 2
-                val cornerRadius = dpToPx(3f).toFloat()
+                val squareCornerRadius = dpToPx(2f).toFloat()
                 
-                canvas.drawRoundRect(left, top, right, bottom, cornerRadius, cornerRadius, stopPaint)
+                canvas.drawRoundRect(left, top, right, bottom, squareCornerRadius, squareCornerRadius, stopPaint)
             }
 
             override fun setAlpha(alpha: Int) {
@@ -371,12 +534,22 @@ class KeyboardComposerView(context: Context, appContext: AppContext) : ExpoView(
     override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
         val width = right - left
         val height = bottom - top
+        
+        // Background fills entire view
+        backgroundView.layout(0, 0, width, height)
         editText.layout(0, 0, width, height)
-        val buttonSize = dpToPx(48f)
-        val buttonMargin = dpToPx(2f)
-        val buttonLeft = width - buttonSize - buttonMargin
-        val buttonTop = height - buttonSize - buttonMargin
-        sendButton.layout(buttonLeft, buttonTop, buttonLeft + buttonSize, buttonTop + buttonSize)
+        
+        // Button Y position - centered within bottom minHeight zone
+        val buttonTop = height - (minHeightPx / 2) - (buttonSize / 2)
+        val buttonBottom = buttonTop + buttonSize
+        
+        // PTT button on left
+        val pttLeft = buttonPadding / 2
+        pttButton.layout(pttLeft, buttonTop, pttLeft + buttonSize, buttonBottom)
+        
+        // Send button on right
+        val sendLeft = width - buttonSize - buttonPadding / 2
+        sendButton.layout(sendLeft, buttonTop, sendLeft + buttonSize, buttonBottom)
     }
 
     fun focus() {
@@ -427,11 +600,18 @@ class KeyboardComposerView(context: Context, appContext: AppContext) : ExpoView(
         return if (isDarkMode()) Color.WHITE else Color.BLACK
     }
     
+    private fun getContrastColor(): Int {
+        return if (isDarkMode()) Color.BLACK else Color.WHITE
+    }
+    
     private fun getPlaceholderColor(): Int {
         return if (isDarkMode()) Color.parseColor("#AAAAAA") else Color.parseColor("#666666")
     }
 
-    private fun getBackgroundColor(): Int {
-        return if (isDarkMode()) Color.parseColor("#1C1C1E") else Color.WHITE
+    private fun getSolidBackgroundColor(): Int {
+        // Theme-matched solid background
+        // light: systemGray6Light = #F2F2F7
+        // dark:  systemGray6Dark  = #1C1C1E
+        return if (isDarkMode()) Color.parseColor("#1C1C1E") else Color.parseColor("#F2F2F7")
     }
 }

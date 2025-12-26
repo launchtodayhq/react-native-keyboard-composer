@@ -47,6 +47,26 @@ class KeyboardComposerModule : Module() {
                 view.isStreaming = value
             }
 
+            Prop("showPTTButton") { view: KeyboardComposerView, value: Boolean ->
+                view.showPTTButton = value
+            }
+
+            Prop("pttEnabled") { view: KeyboardComposerView, value: Boolean ->
+                view.pttEnabled = value
+            }
+
+            Prop("pttState") { view: KeyboardComposerView, value: String ->
+                view.pttState = value
+            }
+
+            Prop("pttPressedScale") { view: KeyboardComposerView, value: Float ->
+                view.pttPressedScale = value
+            }
+
+            Prop("pttPressedOpacity") { view: KeyboardComposerView, value: Float ->
+                view.pttPressedOpacity = value
+            }
+
             Events(
                 "onChangeText",
                 "onSend",
@@ -54,7 +74,10 @@ class KeyboardComposerModule : Module() {
                 "onHeightChange",
                 "onKeyboardHeightChange",
                 "onComposerFocus",
-                "onComposerBlur"
+                "onComposerBlur",
+                "onPTTPress",
+                "onPTTPressIn",
+                "onPTTPressOut"
             )
         }
 
@@ -63,6 +86,10 @@ class KeyboardComposerModule : Module() {
         View(KeyboardAwareWrapper::class) {
             Prop("extraBottomInset") { view: KeyboardAwareWrapper, value: Float ->
                 view.extraBottomInset = value
+            }
+
+            Prop("blurUnderlap") { view: KeyboardAwareWrapper, value: Float ->
+                view.blurUnderlap = value
             }
 
             Prop("scrollToTopTrigger") { view: KeyboardAwareWrapper, value: Double ->

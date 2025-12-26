@@ -11,6 +11,11 @@ export interface KeyboardAwareWrapperProps {
    */
   extraBottomInset?: number;
   /**
+   * Allow scroll content to render under the composer by this many dp.
+   * This makes Android BlurView visibly blur actual content instead of just the background.
+   */
+  blurUnderlap?: number;
+  /**
    * Trigger scroll to bottom when this value changes.
    * Use Date.now() or a counter to trigger.
    */
@@ -21,6 +26,7 @@ export interface KeyboardAwareWrapperProps {
 const NativeView: React.ComponentType<{
   style?: StyleProp<ViewStyle>;
   extraBottomInset?: number;
+  blurUnderlap?: number;
   scrollToTopTrigger?: number;
   children?: ReactNode;
 }> = requireNativeView("KeyboardComposer_KeyboardAwareWrapper");
@@ -43,12 +49,14 @@ export function KeyboardAwareWrapper({
   children,
   style,
   extraBottomInset = 0,
+  blurUnderlap = 0,
   scrollToTopTrigger = 0,
 }: KeyboardAwareWrapperProps) {
   return (
     <NativeView
       style={style}
       extraBottomInset={extraBottomInset}
+      blurUnderlap={blurUnderlap}
       scrollToTopTrigger={scrollToTopTrigger}
     >
       {children}

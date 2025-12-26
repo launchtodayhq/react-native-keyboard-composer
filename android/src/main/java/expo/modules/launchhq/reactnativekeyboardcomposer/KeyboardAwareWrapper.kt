@@ -59,6 +59,14 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
             updateScrollPadding()
             updateScrollButtonPosition()
         }
+
+    private var _blurUnderlap: Float = 0f
+    var blurUnderlap: Float
+        get() = _blurUnderlap
+        set(value) {
+            _blurUnderlap = value
+            updateScrollPadding()
+        }
     
     var scrollToTopTrigger: Double = 0.0
 
@@ -135,10 +143,11 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
     private fun updateScrollPadding() {
         val sv = scrollView ?: return
         val contentGap = dpToPx(CONTENT_GAP_DP)
+        val underlap = dpToPx(_blurUnderlap).toInt()
         // lastComposerHeight is in pixels, extraBottomInset is in DP (from JS)
         val composerHeight = if (lastComposerHeight > 0) lastComposerHeight else dpToPx(extraBottomInset.toInt())
         val bottomSpace = if (currentKeyboardHeight > 0) currentKeyboardHeight else safeAreaBottom
-        val finalPadding = composerHeight + contentGap + bottomSpace
+        val finalPadding = (composerHeight + contentGap + bottomSpace - underlap).coerceAtLeast(0)
         sv.setPadding(sv.paddingLeft, sv.paddingTop, sv.paddingRight, finalPadding)
     }
 
@@ -287,11 +296,12 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
         sv.clipToPadding = false
         
         val contentGap = dpToPx(CONTENT_GAP_DP)
+        val underlap = dpToPx(_blurUnderlap).toInt()
         val composerGap = dpToPx(COMPOSER_KEYBOARD_GAP_DP)
         // extraBottomInset is in DP (from JS), convert to pixels
         // But prefer lastComposerHeight if available (already in pixels)
         val composerHeight = if (lastComposerHeight > 0) lastComposerHeight else dpToPx(extraBottomInset.toInt())
-        val initialPadding = composerHeight + contentGap + safeAreaBottom
+        val initialPadding = (composerHeight + contentGap + safeAreaBottom - underlap).coerceAtLeast(0)
         sv.setPadding(sv.paddingLeft, sv.paddingTop, sv.paddingRight, initialPadding)
         container?.translationY = -composerGap.toFloat()
         
@@ -368,7 +378,7 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
                 val bottomSpace = if (keyboardHeight > 0) keyboardHeight else safeAreaBottom
                 // Use measured composer height (pixels) or convert extraBottomInset from DP
                 val composerHeight = if (lastComposerHeight > 0) lastComposerHeight else dpToPx(extraBottomInset.toInt())
-                val finalPadding = composerHeight + contentGap + bottomSpace
+                val finalPadding = (composerHeight + contentGap + bottomSpace - underlap).coerceAtLeast(0)
                 sv.setPadding(sv.paddingLeft, sv.paddingTop, sv.paddingRight, finalPadding)
                 
                 val maxScroll = getMaxScroll(sv)

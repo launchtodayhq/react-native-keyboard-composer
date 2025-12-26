@@ -1,7 +1,6 @@
 {
   "name": "react-native-keyboard-composer-example",
   "version": "1.0.0",
-  "packageManager": "pnpm@10.15.0",
   "main": "index.ts",
   "scripts": {
     "start": "expo start",

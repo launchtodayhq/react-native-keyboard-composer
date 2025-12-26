@@ -266,6 +266,7 @@ function ChatScreen() {
       <KeyboardAwareWrapper
         style={styles.chatArea}
         extraBottomInset={baseBottomInset}
+        blurUnderlap={24}
         scrollToTopTrigger={scrollTrigger}
       >
         {/* ScrollView with messages */}
@@ -293,7 +294,6 @@ function ChatScreen() {
               style={[
                 styles.composerWrapper,
                 { height: composerHeight },
-                { backgroundColor: isDark ? "#1C1C1E" : "#F2F2F7" },
                 maxContentWidth ? { width: maxContentWidth } : undefined,
               ]}
             >
@@ -304,6 +304,10 @@ function ChatScreen() {
                 minHeight={constants.defaultMinHeight}
                 maxHeight={constants.defaultMaxHeight}
                 sendButtonEnabled={true}
+                showPTTButton={true}
+                onPTTPress={() => console.log("PTT tapped")}
+                onPTTPressIn={() => console.log("PTT press started")}
+                onPTTPressOut={() => console.log("PTT press ended")}
                 style={{ flex: 1 }}
               />
             </View>
@@ -390,7 +394,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   composerWrapper: {
-    borderRadius: 24,
-    overflow: "hidden",
+    // Native blur view handles its own corner radius
   },
 });

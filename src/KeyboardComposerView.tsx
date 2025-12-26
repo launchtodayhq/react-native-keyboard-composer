@@ -40,6 +40,9 @@ const KeyboardComposerView = forwardRef<
       onKeyboardHeightChange,
       onComposerFocus,
       onComposerBlur,
+      onPTTPress,
+      onPTTPressIn,
+      onPTTPressOut,
       ...rest
     } = props;
 
@@ -97,6 +100,18 @@ const KeyboardComposerView = forwardRef<
       onComposerBlur?.();
     }, [onComposerBlur]);
 
+    const handlePTTPress = useCallback(() => {
+      onPTTPress?.();
+    }, [onPTTPress]);
+
+    const handlePTTPressIn = useCallback(() => {
+      onPTTPressIn?.();
+    }, [onPTTPressIn]);
+
+    const handlePTTPressOut = useCallback(() => {
+      onPTTPressOut?.();
+    }, [onPTTPressOut]);
+
     return (
       <NativeView
         onChangeText={handleChangeText}
@@ -106,6 +121,9 @@ const KeyboardComposerView = forwardRef<
         onKeyboardHeightChange={handleKeyboardHeightChange}
         onComposerFocus={handleComposerFocus}
         onComposerBlur={handleComposerBlur}
+        onPTTPress={handlePTTPress}
+        onPTTPressIn={handlePTTPressIn}
+        onPTTPressOut={handlePTTPressOut}
         {...rest}
       />
     );

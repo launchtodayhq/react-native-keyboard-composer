@@ -48,6 +48,26 @@ public class KeyboardComposerModule: Module {
         view.isStreaming = value
       }
 
+      Prop("showPTTButton") { (view: KeyboardComposerView, value: Bool) in
+        view.showPTTButton = value
+      }
+
+      Prop("pttEnabled") { (view: KeyboardComposerView, value: Bool) in
+        view.pttEnabled = value
+      }
+
+      Prop("pttState") { (view: KeyboardComposerView, value: String) in
+        view.pttState = value
+      }
+
+      Prop("pttPressedScale") { (view: KeyboardComposerView, value: CGFloat) in
+        view.pttPressedScale = value
+      }
+
+      Prop("pttPressedOpacity") { (view: KeyboardComposerView, value: CGFloat) in
+        view.pttPressedOpacity = value
+      }
+
       Events(
         "onChangeText",
         "onSend",
@@ -55,7 +75,10 @@ public class KeyboardComposerModule: Module {
         "onHeightChange",
         "onKeyboardHeightChange",
         "onComposerFocus",
-        "onComposerBlur"
+        "onComposerBlur",
+        "onPTTPress",
+        "onPTTPressIn",
+        "onPTTPressOut"
       )
     }
 

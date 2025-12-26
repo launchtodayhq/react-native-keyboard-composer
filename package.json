@@ -1,7 +1,6 @@
 {
   "name": "@launchhq/react-native-keyboard-composer",
   "version": "0.1.0",
-  "packageManager": "pnpm@10.26.0",
   "description": " A native keyboard-aware composer component for React Native with smooth keyboard animations",
   "main": "src/index.ts",
   "types": "src/index.ts",

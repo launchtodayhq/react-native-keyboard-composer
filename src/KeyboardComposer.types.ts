@@ -9,6 +9,8 @@ export type HeightEventPayload = {
   height: number;
 };
 
+export type PTTState = "available" | "talking" | "listening";
+
 // Props for the native view
 export type KeyboardComposerViewProps = {
   /** Placeholder text shown when empty */
@@ -38,6 +40,19 @@ export type KeyboardComposerViewProps = {
   /** Whether the AI is currently streaming (shows stop button) */
   isStreaming?: boolean;
 
+  /** Whether to show the PTT (Push-to-Talk) button */
+  showPTTButton?: boolean;
+
+  /** Whether the PTT button is enabled */
+  pttEnabled?: boolean;
+
+  /** PTT state controls appearance and behavior */
+  pttState?: PTTState;
+
+  /** Visual feedback when pressing the PTT button */
+  pttPressedScale?: number;
+  pttPressedOpacity?: number;
+
   /** Called when text changes */
   onChangeText?: (event: { nativeEvent: TextEventPayload }) => void;
 
@@ -58,6 +73,15 @@ export type KeyboardComposerViewProps = {
 
   /** Called when text input loses focus */
   onComposerBlur?: () => void;
+
+  /** Called when PTT button is tapped */
+  onPTTPress?: () => void;
+
+  /** Called when PTT button touch begins */
+  onPTTPressIn?: () => void;
+
+  /** Called when PTT button touch ends */
+  onPTTPressOut?: () => void;
 
   /** Style for the container */
   style?: StyleProp<ViewStyle>;
@@ -92,6 +116,19 @@ export type KeyboardComposerProps = {
   /** Whether the AI is currently streaming (shows stop button) */
   isStreaming?: boolean;
 
+  /** Whether to show the PTT (Push-to-Talk) button */
+  showPTTButton?: boolean;
+
+  /** Whether the PTT button is enabled */
+  pttEnabled?: boolean;
+
+  /** PTT state controls appearance and behavior */
+  pttState?: PTTState;
+
+  /** Visual feedback when pressing the PTT button */
+  pttPressedScale?: number;
+  pttPressedOpacity?: number;
+
   /** Called when text changes */
   onChangeText?: (text: string) => void;
 
@@ -112,6 +149,15 @@ export type KeyboardComposerProps = {
 
   /** Called when text input loses focus */
   onComposerBlur?: () => void;
+
+  /** Called when PTT button is tapped */
+  onPTTPress?: () => void;
+
+  /** Called when PTT button touch begins */
+  onPTTPressIn?: () => void;
+
+  /** Called when PTT button touch ends */
+  onPTTPressOut?: () => void;
 
   /** Style for the container */
   style?: StyleProp<ViewStyle>;

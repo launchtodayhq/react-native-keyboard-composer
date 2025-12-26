@@ -41,3 +41,7 @@ android {
     abortOnError false
   }
 }
+
+dependencies {
+  // No extra deps. Android uses a solid background (no blur) to avoid RenderScript/JitPack issues.
+}

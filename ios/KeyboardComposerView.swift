@@ -4,6 +4,12 @@ import UIKit
 class KeyboardComposerView: ExpoView {
 
   // MARK: - Props (set from JS)
+  enum PTTState: String {
+    case available
+    case talking
+    case listening
+  }
+
   var placeholder: String = "Type a message..." {
     didSet { placeholderLabel.text = placeholder }
   }
@@ -11,7 +17,6 @@ class KeyboardComposerView: ExpoView {
   var text: String {
     get { textView.text ?? "" }
     set {
-      // Only update if text is actually different (prevents clearing on re-render)
       guard textView.text != newValue else { return }
       textView.text = newValue
       placeholderLabel.isHidden = !newValue.isEmpty
@@ -52,6 +57,24 @@ class KeyboardComposerView: ExpoView {
     }
   }
 
+  var showPTTButton: Bool = false {
+    didSet {
+      pttButton.isHidden = !showPTTButton
+      setNeedsLayout()
+    }
+  }
+
+  var pttEnabled: Bool = true {
+    didSet { updatePTTEnabledState() }
+  }
+
+  var pttState: String = PTTState.available.rawValue {
+    didSet { updatePTTButtonAppearance() }
+  }
+
+  var pttPressedScale: CGFloat = 0.92
+  var pttPressedOpacity: CGFloat = 0.85
+
   // MARK: - Events (sent to JS)
   let onChangeText = EventDispatcher()
   let onSend = EventDispatcher()
@@ -60,21 +83,36 @@ class KeyboardComposerView: ExpoView {
   let onKeyboardHeightChange = EventDispatcher()
   let onComposerFocus = EventDispatcher()
   let onComposerBlur = EventDispatcher()
+  let onPTTPress = EventDispatcher()
+  let onPTTPressIn = EventDispatcher()
+  let onPTTPressOut = EventDispatcher()
 
   // MARK: - UI Elements
-  private let containerView = UIView()
+  private let blurView: UIVisualEffectView = {
+    let view = UIVisualEffectView(effect: nil)
+    view.layer.cornerRadius = 24
+    view.layer.cornerCurve = .continuous
+    view.clipsToBounds = true
+    return view
+  }()
   private let textView = UITextView()
   private let placeholderLabel = UILabel()
   private let sendButton = UIButton(type: .system)
+  private let pttButton = UIButton(type: .system)
 
   // MARK: - Keyboard tracking
-  private var keyboardLayoutConstraint: NSLayoutConstraint?
   private var currentKeyboardHeight: CGFloat = 0
   private var displayLink: CADisplayLink?
   
   // MARK: - Height tracking
   private var currentHeight: CGFloat = 48
   private var lastBoundsWidth: CGFloat = 0
+  
+  // MARK: - Layout constants
+  private let buttonSize: CGFloat = 48
+  private let buttonPadding: CGFloat = 8
+  private let buttonIconSize: CGFloat = 32
+  private var isPTTPressed: Bool = false
 
   // MARK: - Init
   required init(appContext: AppContext? = nil) {
@@ -92,18 +130,14 @@ class KeyboardComposerView: ExpoView {
     backgroundColor = .clear
     clipsToBounds = false
 
-    // Container - transparent background (glass effect handled by JS)
-    containerView.backgroundColor = .clear
-    containerView.layer.cornerRadius = 0
-    containerView.clipsToBounds = false
-
-    addSubview(containerView)
+    // Configure blur effect based on iOS version
+    configureBlurEffect()
+    addSubview(blurView)
 
     // TextView - configured for multiline auto-growing
     textView.delegate = self
     textView.font = .systemFont(ofSize: 16)
     textView.backgroundColor = .clear
-    textView.textContainerInset = UIEdgeInsets(top: 14, left: 12, bottom: 14, right: 44)
     textView.textContainer.lineFragmentPadding = 0
     textView.textContainer.lineBreakMode = .byWordWrapping
     textView.isScrollEnabled = false
@@ -114,14 +148,13 @@ class KeyboardComposerView: ExpoView {
     textView.enablesReturnKeyAutomatically = false
     textView.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
     textView.setContentCompressionResistancePriority(.defaultLow, for: .vertical)
-    containerView.addSubview(textView)
+    blurView.contentView.addSubview(textView)
     
-    // Swipe down gesture to dismiss keyboard
+    // Swipe gestures
     let swipeDown = UISwipeGestureRecognizer(target: self, action: #selector(handleSwipeDown))
     swipeDown.direction = .down
     textView.addGestureRecognizer(swipeDown)
     
-    // Swipe up gesture to focus and open keyboard
     let swipeUp = UISwipeGestureRecognizer(target: self, action: #selector(handleSwipeUp))
     swipeUp.direction = .up
     textView.addGestureRecognizer(swipeUp)
@@ -130,14 +163,24 @@ class KeyboardComposerView: ExpoView {
     placeholderLabel.text = placeholder
     placeholderLabel.font = .systemFont(ofSize: 16)
     placeholderLabel.textColor = .placeholderText
-    containerView.addSubview(placeholderLabel)
+    blurView.contentView.addSubview(placeholderLabel)
 
-    // Send/Stop button
+    // PTT Button (left side) - circular like send button
+    pttButton.addTarget(self, action: #selector(handlePTTTouchDown), for: .touchDown)
+    pttButton.addTarget(self, action: #selector(handlePTTTouchUp), for: [.touchUpInside, .touchUpOutside, .touchCancel])
+    pttButton.addTarget(self, action: #selector(handlePTTTap), for: .touchUpInside)
+    pttButton.isHidden = true
+    blurView.contentView.addSubview(pttButton)
+    updatePTTButtonAppearance()
+    updatePTTEnabledState()
+
+    // Send/Stop button (right side)
+    sendButton.addTarget(self, action: #selector(handleSendTouchDown), for: .touchDown)
+    sendButton.addTarget(self, action: #selector(handleSendTouchUp), for: [.touchUpInside, .touchUpOutside, .touchCancel])
     sendButton.addTarget(self, action: #selector(handleButtonPress), for: .touchUpInside)
-    containerView.addSubview(sendButton)
+    blurView.contentView.addSubview(sendButton)
     updateButtonAppearance()
 
-    setupConstraints()
     updateSendButtonState()
     
     // Emit initial height
@@ -146,33 +189,59 @@ class KeyboardComposerView: ExpoView {
     }
   }
 
+  private func configureBlurEffect() {
+    if #available(iOS 26.0, *) {
+      // Use Liquid Glass on iOS 26+
+      let glassEffect = UIGlassEffect()
+      blurView.effect = glassEffect
+    } else {
+      // Fall back to system material blur
+      let blurEffect = UIBlurEffect(style: .systemThinMaterial)
+      blurView.effect = blurEffect
+    }
+  }
+
   override func layoutSubviews() {
     super.layoutSubviews()
     
     guard bounds.width > 0, bounds.height > 0 else { return }
     
-    containerView.frame = bounds
+    // Blur fills entire view
+    blurView.frame = bounds
     
+    // Button Y position - centered within the bottom minHeight zone
+    // Formula: bounds.height - (minHeight / 2) - (buttonSize / 2)
+    let buttonY = bounds.height - (minHeight / 2) - (buttonSize / 2)
+    
+    // PTT button on left
+    let pttX: CGFloat = buttonPadding
+    pttButton.frame = CGRect(x: pttX, y: buttonY, width: buttonSize, height: buttonSize)
+    
+    // Send button on right
+    let sendX = bounds.width - buttonSize - buttonPadding
+    sendButton.frame = CGRect(x: sendX, y: buttonY, width: buttonSize, height: buttonSize)
+    
+    // Calculate text area bounds
+    let leftInset: CGFloat = showPTTButton ? (buttonPadding + buttonSize + 8) : 16
+    let rightInset: CGFloat = buttonPadding + buttonSize + 4
+    
+    // TextView frame - full width, with fixed vertical padding
+    let textViewPadding: CGFloat = 8
     textView.frame = CGRect(
-      x: 0,
-      y: 0,
-      width: containerView.bounds.width,
-      height: containerView.bounds.height
+      x: leftInset,
+      y: textViewPadding,
+      width: bounds.width - leftInset - rightInset,
+      height: bounds.height - (textViewPadding * 2)
     )
+    textView.textContainerInset = UIEdgeInsets(top: 6, left: 0, bottom: 6, right: 0)
     
+    // Placeholder positioned at the same location as text
     let placeholderHeight = placeholderLabel.intrinsicContentSize.height
     placeholderLabel.frame = CGRect(
-      x: 17,
-      y: 14,
-      width: bounds.width - 60,
+      x: leftInset + 5,
+      y: textViewPadding + 6,
+      width: textView.frame.width - 10,
       height: placeholderHeight
-    )
-    
-    sendButton.frame = CGRect(
-      x: bounds.width - 40,
-      y: bounds.height - 42,
-      width: 32,
-      height: 32
     )
     
     if bounds.width != lastBoundsWidth {
@@ -183,16 +252,10 @@ class KeyboardComposerView: ExpoView {
     }
   }
 
-  private func setupConstraints() {
-    // Using frame-based layout in layoutSubviews
-  }
-
   // MARK: - Keyboard Layout Guide Integration
   override func willMove(toWindow newWindow: UIWindow?) {
     super.willMove(toWindow: newWindow)
     
-    // If moving to nil window, view is being removed (e.g., navigating away)
-    // Dismiss keyboard early to prevent it staying open during transition
     if newWindow == nil {
       textView.resignFirstResponder()
     }
@@ -284,7 +347,6 @@ class KeyboardComposerView: ExpoView {
   private func handleSend() {
     guard !textView.text.isEmpty else { return }
 
-    // Haptic feedback
     let generator = UIImpactFeedbackGenerator(style: .light)
     generator.impactOccurred()
 
@@ -305,33 +367,163 @@ class KeyboardComposerView: ExpoView {
     onStop([:])
   }
 
-  private func updateButtonAppearance() {
-    let config = UIImage.SymbolConfiguration(pointSize: 28, weight: .medium)
+  @objc private func handleSendTouchDown() {
+    animateButton(sendButton, pressed: true, scale: 0.92, opacity: 0.85)
+  }
+
+  @objc private func handleSendTouchUp() {
+    animateButton(sendButton, pressed: false, scale: 0.92, opacity: 0.85)
+  }
+
+  // MARK: - PTT Actions
+  @objc private func handlePTTTouchDown() {
+    guard pttEnabled else { return }
+    let generator = UIImpactFeedbackGenerator(style: .light)
+    generator.impactOccurred()
+    isPTTPressed = true
+    animateButton(pttButton, pressed: true, scale: pttPressedScale, opacity: pttPressedOpacity)
+    onPTTPressIn([:])
+  }
+
+  @objc private func handlePTTTouchUp() {
+    guard pttEnabled else { return }
+    isPTTPressed = false
+    animateButton(pttButton, pressed: false, scale: pttPressedScale, opacity: pttPressedOpacity)
+    onPTTPressOut([:])
+  }
+
+  @objc private func handlePTTTap() {
+    guard pttEnabled else { return }
+    onPTTPress([:])
+  }
+
+  private func animateButton(_ button: UIButton, pressed: Bool, scale: CGFloat, opacity: CGFloat) {
+    let targetTransform: CGAffineTransform = pressed ? CGAffineTransform(scaleX: scale, y: scale) : .identity
+    let targetAlpha: CGFloat = pressed ? opacity : 1.0
+    UIView.animate(withDuration: 0.12, delay: 0, options: [.beginFromCurrentState, .allowUserInteraction]) {
+      button.transform = targetTransform
+      button.alpha = targetAlpha
+    }
+  }
+
+  private func updatePTTButtonAppearance() {
+    // Create circular background image with waveform bars drawn manually
+    let size = buttonIconSize
+    let renderer = UIGraphicsImageRenderer(size: CGSize(width: size, height: size))
     
+    let labelColor = UIColor.label.resolvedColor(with: traitCollection)
+    let bgColor = UIColor.systemBackground.resolvedColor(with: traitCollection)
+    let state = PTTState(rawValue: pttState.lowercased()) ?? .available
+    let circleColor: UIColor = {
+      switch state {
+      case .available: return labelColor
+      case .talking: return .systemRed
+      case .listening: return .systemBlue
+      }
+    }()
+    let iconColor: UIColor = (state == .available) ? bgColor : .white
+    
+    let image = renderer.image { context in
+      let ctx = context.cgContext
+      
+      // Draw circle background
+      ctx.setFillColor(circleColor.cgColor)
+      ctx.fillEllipse(in: CGRect(x: 0, y: 0, width: size, height: size))
+      
+      // Draw waveform bars
+      ctx.setStrokeColor(iconColor.cgColor)
+      ctx.setLineWidth(2.5)
+      ctx.setLineCap(.round)
+      
+      let centerX = size / 2
+      let centerY = size / 2
+      let barSpacing: CGFloat = 4.5
+      let heights: [CGFloat] = [0.3, 0.55, 0.9, 0.55, 0.3]
+      let maxBarHeight: CGFloat = size * 0.5
+      
+      var x = centerX - CGFloat(heights.count / 2) * barSpacing
+      for heightFactor in heights {
+        let barHeight = maxBarHeight * heightFactor
+        ctx.move(to: CGPoint(x: x, y: centerY - barHeight / 2))
+        ctx.addLine(to: CGPoint(x: x, y: centerY + barHeight / 2))
+        ctx.strokePath()
+        x += barSpacing
+      }
+    }
+    
+    pttButton.setImage(image.withRenderingMode(.alwaysOriginal), for: .normal)
+  }
+
+  private func updateButtonAppearance() {
+    let size = buttonIconSize
+    let renderer = UIGraphicsImageRenderer(size: CGSize(width: size, height: size))
+    let labelColor = UIColor.label.resolvedColor(with: traitCollection)
+    let bgColor = UIColor.systemBackground.resolvedColor(with: traitCollection)
+
+    let image = renderer.image { context in
+      let ctx = context.cgContext
+      ctx.setFillColor(labelColor.cgColor)
+      ctx.fillEllipse(in: CGRect(x: 0, y: 0, width: size, height: size))
+
+      if isStreaming {
+        // Stop: filled rounded square
+        ctx.setFillColor(bgColor.cgColor)
+        let squareSize = (size / 2) * 0.7
+        let rect = CGRect(
+          x: (size - squareSize) / 2,
+          y: (size - squareSize) / 2,
+          width: squareSize,
+          height: squareSize
+        )
+        let path = UIBezierPath(roundedRect: rect, cornerRadius: 2)
+        ctx.addPath(path.cgPath)
+        ctx.fillPath()
+      } else {
+        // Send: arrow stroke
+        ctx.setStrokeColor(bgColor.cgColor)
+        ctx.setLineWidth(2.5)
+        ctx.setLineCap(.round)
+        ctx.setLineJoin(.round)
+
+        let cx = size / 2
+        let cy = size / 2
+        let arrowSize = (size / 2) * 0.7
+
+        ctx.move(to: CGPoint(x: cx, y: cy + arrowSize * 0.5))
+        ctx.addLine(to: CGPoint(x: cx, y: cy - arrowSize * 0.5))
+        ctx.strokePath()
+
+        ctx.move(to: CGPoint(x: cx - arrowSize * 0.5, y: cy - arrowSize * 0.1))
+        ctx.addLine(to: CGPoint(x: cx, y: cy - arrowSize * 0.6))
+        ctx.addLine(to: CGPoint(x: cx + arrowSize * 0.5, y: cy - arrowSize * 0.1))
+        ctx.strokePath()
+      }
+    }
+
+    sendButton.setImage(image.withRenderingMode(.alwaysOriginal), for: .normal)
     if isStreaming {
-      let image = UIImage(systemName: "stop.circle.fill", withConfiguration: config)
-      sendButton.setImage(image, for: .normal)
-      sendButton.tintColor = .label
       sendButton.isEnabled = true
       sendButton.alpha = 1.0
     } else {
-      let image = UIImage(systemName: "arrow.up.circle.fill", withConfiguration: config)
-      sendButton.setImage(image, for: .normal)
-      sendButton.tintColor = .label
       updateSendButtonState()
     }
   }
 
   private func updateHeight() {
     let availableWidth = bounds.width > 0 ? bounds.width : 280
+    let leftInset: CGFloat = showPTTButton ? (buttonPadding + buttonSize + 8) : 16
+    let rightInset: CGFloat = buttonPadding + buttonSize + 4
+    let textWidth = availableWidth - leftInset - rightInset
+    
     let fittingSize = CGSize(
-      width: availableWidth,
+      width: textWidth,
       height: .greatestFiniteMagnitude
     )
     
     let size = textView.sizeThatFits(fittingSize)
-    let contentHeight = max(size.height, minHeight)
-    let newHeight = min(contentHeight, maxHeight)
+    // Add padding for the text container
+    let contentHeight = size.height + 16
+    let newHeight = min(max(contentHeight, minHeight), maxHeight)
     
     let shouldScroll = contentHeight > maxHeight
     if textView.isScrollEnabled != shouldScroll {
@@ -350,6 +542,15 @@ class KeyboardComposerView: ExpoView {
     let hasText = !textView.text.isEmpty
     sendButton.isEnabled = sendButtonEnabled && hasText
     sendButton.alpha = sendButton.isEnabled ? 1.0 : 0.4
+  }
+
+  private func updatePTTEnabledState() {
+    pttButton.isEnabled = pttEnabled
+    pttButton.alpha = pttEnabled ? 1.0 : 0.4
+    if !pttEnabled && isPTTPressed {
+      isPTTPressed = false
+      pttButton.transform = .identity
+    }
   }
 
   // MARK: - Gestures
@@ -376,6 +577,16 @@ class KeyboardComposerView: ExpoView {
     updateHeight()
     updateSendButtonState()
     onChangeText(["text": ""])
+  }
+
+  // MARK: - Trait changes (for dark/light mode updates)
+  override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+    super.traitCollectionDidChange(previousTraitCollection)
+    
+    if traitCollection.hasDifferentColorAppearance(comparedTo: previousTraitCollection) {
+      // Update PTT button for new appearance
+      updatePTTButtonAppearance()
+    }
   }
 }
 
