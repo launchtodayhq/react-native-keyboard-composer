@@ -24,6 +24,8 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
     private var pinnedOffset: CGFloat = 0
     private var pendingPin = false
     private var pendingPinMessageStartY: CGFloat = 0
+    private var pendingPinReady = false
+    private var pendingPinContentHeightAfter: CGFloat = 0
     
     /// Get safe area bottom from window
     private var safeAreaBottom: CGFloat {
@@ -120,9 +122,16 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
             delay: 0,
             options: animationOptions,
             animations: {
-                self.updateContentInset()
+                // If we're about to pin, keep the visible content stable while the keyboard animates out.
+                self.updateContentInset(preserveScrollPosition: self.pendingPin || self.pendingPinReady || self.isPinned)
             },
-            completion: nil
+            completion: { _ in
+                // If content was appended while the keyboard was still open, finish pinning after it closes.
+                if self.pendingPinReady {
+                    self.pendingPinReady = false
+                    self.applyPinAfterSend(contentHeightAfter: self.pendingPinContentHeightAfter)
+                }
+            }
         )
     }
     
@@ -149,18 +158,30 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
         let keyboardOpenPadding: CGFloat = 8  // Spacing.sm from JS
         
         let baseInset: CGFloat
+        let indicatorInset: CGFloat
+        let contentGap: CGFloat = 24
+        let minBottomPadding: CGFloat = 16
+        let composerKeyboardGap: CGFloat = 10
+        let indicatorGapAboveInput: CGFloat = 2
+        let composerHeight = max(0, baseBottomInset - contentGap)
+
         if keyboardHeight > 0 {
             // Keyboard open: base + keyboard + small padding
             baseInset = baseBottomInset + keyboardHeight + keyboardOpenPadding
+            // Stop just above the composer when keyboard is open
+            indicatorInset = keyboardHeight + composerKeyboardGap + composerHeight + indicatorGapAboveInput
         } else {
             // Keyboard closed: base + safe area
             baseInset = baseBottomInset + safeAreaBottom
+            // Stop just above the composer when keyboard is closed
+            let bottomOffset = max(safeAreaBottom, minBottomPadding)
+            indicatorInset = bottomOffset + composerHeight + indicatorGapAboveInput
         }
         
         let totalInset = baseInset + runwayInset
         scrollView.contentInset.bottom = totalInset
-        // Indicator should behave like content ends at the messages, not at the runway
-        scrollView.verticalScrollIndicatorInsets.bottom = baseInset
+        // Indicator should behave like content ends just above the input (not at the runway)
+        scrollView.verticalScrollIndicatorInsets.bottom = indicatorInset
         
         // Restore scroll position if needed (prevents visual jump when not at bottom)
         if let savedOffset = savedOffset {
@@ -207,7 +228,15 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
             // Pin is armed first, then executed on the next content growth (user message append).
             if self.pendingPin && newSize.height > oldSize.height {
                 self.pendingPin = false
-                self.applyPinAfterSend(contentHeightAfter: newSize.height)
+
+                // If the keyboard is still open/animating, defer the pin until keyboard hide completes
+                // to avoid the "content moves down, then up" effect.
+                if self.keyboardHeight > 0 || self.isKeyboardVisible {
+                    self.pendingPinReady = true
+                    self.pendingPinContentHeightAfter = newSize.height
+                } else {
+                    self.applyPinAfterSend(contentHeightAfter: newSize.height)
+                }
             } else if self.isPinned && self.runwayInset > 0 && newSize.height > oldSize.height {
                 let growth = newSize.height - oldSize.height
                 self.consumeRunway(by: growth)
@@ -288,6 +317,8 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
 
         // Reset any previous pin/runway
         pendingPin = true
+        pendingPinReady = false
+        pendingPinContentHeightAfter = 0
         isPinned = false
         runwayInset = 0
         pinnedOffset = 0
@@ -329,8 +360,8 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
         runwayInset = neededRunway
         updateContentInset(preserveScrollPosition: true)
 
-        // No manual animation: jump to pinned offset
-        sv.setContentOffset(CGPoint(x: 0, y: desiredPinnedOffset), animated: false)
+        // Use native scroll animation so it feels like the message travels from the input to the top.
+        sv.setContentOffset(CGPoint(x: 0, y: desiredPinnedOffset), animated: true)
 
         if neededRunway == 0 {
             isPinned = false

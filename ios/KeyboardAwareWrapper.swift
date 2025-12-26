@@ -571,6 +571,14 @@ class KeyboardAwareWrapper: ExpoView, KeyboardAwareScrollHandlerDelegate {
     // MARK: - Touch Routing (runway)
 
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
+        // Never steal touches that belong to the composer or the scroll-to-bottom button.
+        if let button = scrollToBottomButton, button.frame.contains(point) {
+            return button
+        }
+        if let container = composerContainer, container.frame.contains(point) {
+            return super.hitTest(point, with: event)
+        }
+
         if let sv = keyboardHandler.scrollView {
             let svFrame = sv.frame
             if point.y >= svFrame.minY && point.y <= svFrame.maxY {
