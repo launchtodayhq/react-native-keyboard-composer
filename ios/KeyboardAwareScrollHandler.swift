@@ -1,9 +1,10 @@
 import ExpoModulesCore
 import UIKit
 
-/// Delegate to notify when scroll position changes
+/// Delegate to notify when scroll position or runway height changes
 protocol KeyboardAwareScrollHandlerDelegate: AnyObject {
     func scrollHandler(_ handler: KeyboardAwareScrollHandler, didUpdateScrollPosition isAtBottom: Bool)
+    func scrollHandler(_ handler: KeyboardAwareScrollHandler, didUpdateRunwayHeight height: CGFloat)
 }
 
 /// Native keyboard handler that directly controls a UIScrollView's contentInset.
@@ -279,6 +280,10 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
                         self.runwayInset = newRunway
                         self.updateContentInset(preserveScrollPosition: true)
                         
+                        // Notify delegate of runway change
+                        NSLog("[ScrollHandler] 📨 Notifying delegate of runway height: %.0f", newRunway)
+                        self.delegate?.scrollHandler(self, didUpdateRunwayHeight: newRunway)
+                        
                         // When runway is fully consumed, clear pinned state
                         // This returns scroll-to-bottom and isNearBottom to normal behavior
                         if newRunway == 0 {
@@ -299,9 +304,27 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
     
     // MARK: - UIScrollViewDelegate
     
+    private var lastLoggedOffset: CGFloat = -1000
+    
     func scrollViewDidScroll(_ scrollView: UIScrollView) {
         // No hard clamping - let iOS handle natural physics
         // The runway is adjusted dynamically as content grows to maintain scroll limits
+        
+        #if DEBUG
+        // Log scroll position periodically (not every frame)
+        let currentOffset = scrollView.contentOffset.y
+        if abs(currentOffset - lastLoggedOffset) > 50 {
+            lastLoggedOffset = currentOffset
+            let contentH = scrollView.contentSize.height
+            let viewportH = scrollView.bounds.height
+            let insetBottom = scrollView.contentInset.bottom
+            let maxOffset = contentH - viewportH + insetBottom
+            
+            NSLog("[DEBUG SCROLL] offset=%.0f / max=%.0f (content=%.0f viewport=%.0f inset=%.0f) isPinned=%@",
+                  currentOffset, maxOffset, contentH, viewportH, insetBottom, isPinned ? "YES" : "NO")
+        }
+        #endif
+        
         checkAndUpdateScrollPosition()
     }
     
@@ -497,6 +520,10 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
             guard let self = self else { return }
             NSLog("[ScrollHandler] Pin complete. offset=%.0f runway=%.0f", sv.contentOffset.y, runway)
             self.logScrollViewState(context: "after pin complete")
+            
+            // Notify delegate of runway change
+            NSLog("[ScrollHandler] 📨 Notifying delegate of runway height: %.0f", runway)
+            self.delegate?.scrollHandler(self, didUpdateRunwayHeight: runway)
             
             // Log scroll view frame and scroll state
             NSLog("[ScrollHandler] scrollView.frame=%.0f,%.0f,%.0f,%.0f", 

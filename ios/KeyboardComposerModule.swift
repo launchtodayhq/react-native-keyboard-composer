@@ -69,6 +69,8 @@ public class KeyboardComposerModule: Module {
       Prop("scrollToTopTrigger") { (view: KeyboardAwareWrapper, value: Double) in
         view.scrollToTopTrigger = value
       }
+      
+      Events("onRunwayChange")
     }
     
   }

@@ -3,7 +3,7 @@ import UIKit
 
 /// A native wrapper view that finds UIScrollView children and attaches keyboard handling.
 /// Also finds and animates the composer container with the keyboard.
-class KeyboardAwareWrapper: ExpoView, KeyboardAwareScrollHandlerDelegate {
+class KeyboardAwareWrapper: ExpoView, KeyboardAwareScrollHandlerDelegate, UIGestureRecognizerDelegate {
     private let keyboardHandler = KeyboardAwareScrollHandler()
     private var hasAttached = false
     private var scrollToBottomButton: UIButton?
@@ -37,12 +37,16 @@ class KeyboardAwareWrapper: ExpoView, KeyboardAwareScrollHandlerDelegate {
     /// Trigger scroll to top when this value changes (use timestamp/counter from JS)
     @objc dynamic var scrollToTopTrigger: Double = 0
     
+    /// Event dispatcher to notify JS when runway height changes
+    let onRunwayChange = EventDispatcher()
+    
     required init(appContext: AppContext? = nil) {
         super.init(appContext: appContext)
         keyboardHandler.delegate = self
         setupScrollToBottomButton()
         setupKeyboardObservers()
         setupPropertyObservers()
+        setupRunwayPanGesture()
     }
     
     required init?(coder: NSCoder) {
@@ -378,7 +382,108 @@ class KeyboardAwareWrapper: ExpoView, KeyboardAwareScrollHandlerDelegate {
         }
     }
     
+    func scrollHandler(_ handler: KeyboardAwareScrollHandler, didUpdateRunwayHeight height: CGFloat) {
+        NSLog("[KeyboardWrapper] 📨 Runway height changed: %.0f", height)
+        
+        #if DEBUG
+        // Update debug runway overlay
+        DispatchQueue.main.async {
+            self.updateDebugRunwayView(height: height)
+        }
+        #endif
+        
+        // NOTE: Event dispatch disabled temporarily - causes "Unsupported top level event" error
+        // TODO: Fix event registration for this view
+        // DispatchQueue.main.async {
+        //     self.onRunwayChange(["height": height])
+        // }
+    }
+    
+    #if DEBUG
+    private var debugContentEndLine: UIView?
+    
+    private func updateDebugRunwayView(height: CGFloat) {
+        guard let sv = keyboardHandler.scrollView else { return }
+        
+        if height > 0 {
+            // Create debug content end line (shows exactly where content ends)
+            if debugContentEndLine == nil {
+                let line = UIView()
+                line.backgroundColor = UIColor.blue
+                line.isUserInteractionEnabled = false
+                self.addSubview(line)
+                debugContentEndLine = line
+            }
+            
+            // Create or update debug runway view
+            if debugRunwayView == nil {
+                let view = UIView()
+                view.backgroundColor = UIColor.red.withAlphaComponent(0.15)
+                view.layer.borderWidth = 2
+                view.layer.borderColor = UIColor.red.cgColor
+                view.isUserInteractionEnabled = false // Don't block touches
+                
+                // Add label
+                let label = UILabel()
+                label.text = "RUNWAY"
+                label.textColor = .red
+                label.font = .boldSystemFont(ofSize: 12)
+                label.textAlignment = .center
+                label.tag = 999
+                view.addSubview(label)
+                
+                self.addSubview(view)
+                debugRunwayView = view
+            }
+            
+            // Calculate where content ends in screen coordinates
+            let contentHeight = sv.contentSize.height
+            let scrollViewFrame = sv.convert(sv.bounds, to: self)
+            
+            // Content bottom in SCREEN coordinates (relative to wrapper)
+            let contentBottomScreen = scrollViewFrame.origin.y + (contentHeight - sv.contentOffset.y)
+            
+            // Blue line at content end
+            debugContentEndLine?.frame = CGRect(
+                x: scrollViewFrame.origin.x,
+                y: contentBottomScreen,
+                width: scrollViewFrame.width,
+                height: 3
+            )
+            debugContentEndLine?.isHidden = false
+            
+            // Red runway area (from content end to composer)
+            let runwayVisibleHeight = min(height, scrollViewFrame.maxY - contentBottomScreen)
+            
+            debugRunwayView?.frame = CGRect(
+                x: scrollViewFrame.origin.x + 10,
+                y: contentBottomScreen,
+                width: scrollViewFrame.width - 20,
+                height: max(0, runwayVisibleHeight)
+            )
+            
+            // Update label
+            if let label = debugRunwayView?.viewWithTag(999) as? UILabel {
+                label.text = "← TOUCH HERE TO SCROLL (\(Int(height))pt runway)"
+                label.frame = debugRunwayView?.bounds ?? .zero
+            }
+            
+            debugRunwayView?.isHidden = runwayVisibleHeight <= 0
+            
+            NSLog("[DEBUG] Content ends at screen Y=%.0f, runway visible=%.0f (contentH=%.0f offset=%.0f)",
+                  contentBottomScreen, runwayVisibleHeight, contentHeight, sv.contentOffset.y)
+        } else {
+            debugRunwayView?.isHidden = true
+            debugContentEndLine?.isHidden = true
+        }
+    }
+    #endif
+    
     private var hasLoggedFrames = false
+    
+    // DEBUG: Visual overlays
+    private var debugRunwayView: UIView?
+    private var debugContentView: UIView?
     
     override func layoutSubviews() {
         super.layoutSubviews()
@@ -486,11 +591,23 @@ class KeyboardAwareWrapper: ExpoView, KeyboardAwareScrollHandlerDelegate {
             keyboardHandler.setBaseInset(baseInset)
             keyboardHandler.attach(to: sv)
             hasAttached = true
+            
             #if DEBUG
             NSLog("[KeyboardWrapper] attached scrollView=%@", String(describing: type(of: sv)))
             NSLog("[KeyboardWrapper] FRAMES: wrapper=%.0f,%.0f,%.0f,%.0f scrollView=%.0f,%.0f,%.0f,%.0f",
                   bounds.origin.x, bounds.origin.y, bounds.size.width, bounds.size.height,
                   sv.frame.origin.x, sv.frame.origin.y, sv.frame.size.width, sv.frame.size.height)
+            
+            // DEBUG: Add visual overlay to show scroll view bounds (subtle)
+            sv.layer.borderWidth = 2
+            sv.layer.borderColor = UIColor.green.withAlphaComponent(0.3).cgColor
+            
+            // DEBUG: Add pan gesture logger to see if touches are received
+            let debugPan = UIPanGestureRecognizer(target: self, action: #selector(debugPanGesture(_:)))
+            debugPan.delegate = self
+            sv.addGestureRecognizer(debugPan)
+            
+            NSLog("[DEBUG] ✅ Scroll view should now receive touches in runway area via hitTest override")
             #endif
         } else {
             // Will retry
@@ -580,6 +697,208 @@ class KeyboardAwareWrapper: ExpoView, KeyboardAwareScrollHandlerDelegate {
     /// Scroll so new content appears at top (ChatGPT-style)
     func scrollNewContentToTop(estimatedHeight: CGFloat) {
         keyboardHandler.scrollNewContentToTop(estimatedHeight: estimatedHeight)
+    }
+    
+    // MARK: - Touch Handling for Runway Area
+    
+    /// Pan gesture recognizer for the runway area.
+    /// UIScrollView's native pan gesture doesn't activate in contentInset areas (no content to grab).
+    /// This gesture handles pans that start in the runway and forwards them to the scroll view.
+    private var runwayPanGesture: UIPanGestureRecognizer?
+    private var runwayPanStartOffset: CGFloat = 0
+    
+    // Physics-based deceleration
+    private var displayLink: CADisplayLink?
+    private var decelerationVelocity: CGFloat = 0
+    private var decelerationTarget: CGFloat = 0
+    
+    private func setupRunwayPanGesture() {
+        let pan = UIPanGestureRecognizer(target: self, action: #selector(handleRunwayPan(_:)))
+        pan.delegate = self
+        self.addGestureRecognizer(pan)
+        runwayPanGesture = pan
+    }
+    
+    @objc private func handleRunwayPan(_ gesture: UIPanGestureRecognizer) {
+        guard let sv = keyboardHandler.scrollView else { return }
+        
+        switch gesture.state {
+        case .began:
+            // Store the starting offset
+            runwayPanStartOffset = sv.contentOffset.y
+            NSLog("[RunwayPan] 🖐️ Pan BEGAN in runway, startOffset=%.0f", runwayPanStartOffset)
+            
+        case .changed:
+            // Calculate new offset based on pan translation
+            let translation = gesture.translation(in: self)
+            let newOffset = runwayPanStartOffset - translation.y
+            
+            // Clamp to valid range
+            let minOffset: CGFloat = 0
+            let maxOffset = sv.contentSize.height - sv.bounds.height + sv.contentInset.bottom
+            let clampedOffset = max(minOffset, min(maxOffset, newOffset))
+            
+            sv.contentOffset = CGPoint(x: 0, y: clampedOffset)
+            
+        case .ended, .cancelled:
+            let velocity = gesture.velocity(in: self)
+            NSLog("[RunwayPan] 🏁 Pan ENDED, velocity=%.0f", velocity.y)
+            
+            // For significant velocity, project where the scroll should end
+            // and let it decelerate there
+            if abs(velocity.y) > 50 {
+                // Use iOS's standard deceleration rate formula
+                // The deceleration rate is approximately 0.998, meaning velocity 
+                // decays to near-zero over about 1-2 seconds
+                // Projected distance ≈ initialVelocity / (1 - decelerationRate) * timeConstant
+                // Simplified: velocity * ~0.3-0.5 gives a good feel
+                let projectedDistance = velocity.y * 0.25
+                
+                let targetOffset = sv.contentOffset.y - projectedDistance
+                let minOffset: CGFloat = 0
+                let maxOffset = sv.contentSize.height - sv.bounds.height + sv.contentInset.bottom
+                let clampedTarget = max(minOffset, min(maxOffset, targetOffset))
+                
+                // Animate using CADisplayLink for frame-accurate physics
+                decelerateToOffset(clampedTarget, initialVelocity: velocity.y)
+            }
+            // If low velocity, just stop where it is (already set during .changed)
+            
+        default:
+            break
+        }
+    }
+    
+    /// Start physics-based deceleration animation
+    private func decelerateToOffset(_ target: CGFloat, initialVelocity: CGFloat) {
+        // Stop any existing animation
+        displayLink?.invalidate()
+        
+        decelerationTarget = target
+        decelerationVelocity = -initialVelocity  // Negative because scroll direction is inverted
+        
+        let link = CADisplayLink(target: self, selector: #selector(decelerationStep))
+        link.add(to: .main, forMode: .common)
+        displayLink = link
+    }
+    
+    @objc private func decelerationStep() {
+        guard let sv = keyboardHandler.scrollView else {
+            displayLink?.invalidate()
+            displayLink = nil
+            return
+        }
+        
+        // Apply deceleration (friction)
+        let decelerationRate: CGFloat = 0.95  // Higher = more friction, stops faster
+        decelerationVelocity *= decelerationRate
+        
+        // Calculate new offset
+        let dt: CGFloat = 1.0 / 60.0  // Assume 60fps
+        let delta = decelerationVelocity * dt
+        var newOffset = sv.contentOffset.y + delta
+        
+        // Clamp to bounds
+        let minOffset: CGFloat = 0
+        let maxOffset = sv.contentSize.height - sv.bounds.height + sv.contentInset.bottom
+        newOffset = max(minOffset, min(maxOffset, newOffset))
+        
+        // Apply
+        sv.contentOffset = CGPoint(x: 0, y: newOffset)
+        
+        // Stop when velocity is low enough or we've reached bounds
+        if abs(decelerationVelocity) < 10 || newOffset <= minOffset || newOffset >= maxOffset {
+            displayLink?.invalidate()
+            displayLink = nil
+        }
+    }
+    
+    /// Determine if a point is in the runway area (below content, within scroll view frame)
+    private func isPointInRunwayArea(_ point: CGPoint) -> Bool {
+        guard let sv = keyboardHandler.scrollView else { 
+            NSLog("[RunwayArea] No scroll view!")
+            return false 
+        }
+        
+        // Get scroll view's frame in wrapper coordinates
+        let scrollViewFrame = sv.frame
+        
+        // Check if point is within scroll view's frame (vertically)
+        guard point.y >= scrollViewFrame.minY && point.y <= scrollViewFrame.maxY else {
+            return false
+        }
+        
+        // Calculate where content ends in SCREEN coordinates (relative to wrapper)
+        let contentHeight = sv.contentSize.height
+        let offsetY = sv.contentOffset.y
+        let contentBottomScreen = scrollViewFrame.minY + (contentHeight - offsetY)
+        
+        // Runway is below content end but within scroll view frame
+        let isInRunway = point.y > contentBottomScreen && point.y < scrollViewFrame.maxY
+        
+        #if DEBUG
+        NSLog("[RunwayArea] screenY=%.0f, contentBottomScreen=%.0f, svMaxY=%.0f → isInRunway=%@",
+              point.y, contentBottomScreen, scrollViewFrame.maxY, isInRunway ? "YES" : "NO")
+        #endif
+        
+        return isInRunway
+    }
+    
+    // MARK: - Debug Gesture Handling
+    
+    #if DEBUG
+    @objc private func debugPanGesture(_ gesture: UIPanGestureRecognizer) {
+        guard let sv = gesture.view as? UIScrollView else { return }
+        
+        // location(in: scrollView) returns CONTENT coordinates (includes contentOffset)
+        let locationInContent = gesture.location(in: sv)
+        
+        // Calculate screen position (relative to scroll view's visible frame)
+        let screenY = locationInContent.y - sv.contentOffset.y
+        
+        let contentHeight = sv.contentSize.height
+        
+        // Is touch in content area or inset/runway area?
+        let isInContent = locationInContent.y < contentHeight
+        let isInRunway = locationInContent.y >= contentHeight
+        
+        if gesture.state == .began {
+            NSLog("[DEBUG TOUCH] 🖐️ Pan at SCREEN Y=%.0f (content Y=%.0f)",
+                  screenY, locationInContent.y)
+            NSLog("[DEBUG TOUCH] contentHeight=%.0f → isInContent=%@ isInRunway=%@",
+                  contentHeight, isInContent ? "YES" : "NO", isInRunway ? "YES" : "NO")
+            
+            if isInRunway {
+                NSLog("[DEBUG TOUCH] ✅ TOUCH IS IN RUNWAY AREA!")
+            }
+        }
+    }
+    
+    // Allow debug gesture to work simultaneously with scroll view's pan
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+        return true
+    }
+    #endif
+    
+    // MARK: - UIGestureRecognizerDelegate for Runway Pan
+    
+    /// Only allow the runway pan gesture to begin if the touch is in the runway area
+    override func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+        // Only filter our runway pan gesture
+        guard gestureRecognizer === runwayPanGesture else { return true }
+        
+        let location = gestureRecognizer.location(in: self)
+        let isInRunway = isPointInRunwayArea(location)
+        
+        #if DEBUG
+        NSLog("[RunwayPan] gestureRecognizerShouldBegin called at y=%.0f, isInRunway=%@", 
+              location.y, isInRunway ? "YES" : "NO")
+        if isInRunway {
+            NSLog("[RunwayPan] ✅ Gesture SHOULD start in runway area")
+        }
+        #endif
+        
+        return isInRunway
     }
 }
 
