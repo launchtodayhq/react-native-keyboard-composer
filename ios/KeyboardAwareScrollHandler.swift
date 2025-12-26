@@ -17,6 +17,13 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
     private var wasAtBottom = false
     private var isAtBottom = true
     private var isKeyboardVisible = false  // Track if keyboard is already showing
+
+    // Pin-to-top + runway state
+    private var isPinned = false
+    private var runwayInset: CGFloat = 0
+    private var pinnedOffset: CGFloat = 0
+    private var pendingPin = false
+    private var pendingPinMessageStartY: CGFloat = 0
     
     /// Get safe area bottom from window
     private var safeAreaBottom: CGFloat {
@@ -141,17 +148,19 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
         // - Keyboard open: Spacing.sm (8)
         let keyboardOpenPadding: CGFloat = 8  // Spacing.sm from JS
         
-        let totalInset: CGFloat
+        let baseInset: CGFloat
         if keyboardHeight > 0 {
             // Keyboard open: base + keyboard + small padding
-            totalInset = baseBottomInset + keyboardHeight + keyboardOpenPadding
+            baseInset = baseBottomInset + keyboardHeight + keyboardOpenPadding
         } else {
             // Keyboard closed: base + safe area
-            totalInset = baseBottomInset + safeAreaBottom
+            baseInset = baseBottomInset + safeAreaBottom
         }
         
+        let totalInset = baseInset + runwayInset
         scrollView.contentInset.bottom = totalInset
-        scrollView.verticalScrollIndicatorInsets.bottom = totalInset
+        // Indicator should behave like content ends at the messages, not at the runway
+        scrollView.verticalScrollIndicatorInsets.bottom = baseInset
         
         // Restore scroll position if needed (prevents visual jump when not at bottom)
         if let savedOffset = savedOffset {
@@ -188,9 +197,22 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
         tapGesture = tap
         
         // Observe content size changes
-        contentSizeObservation = scrollView.observe(\.contentSize, options: [.new, .old]) { [weak self] scrollView, change in
-            guard let self = self else { return }
-            // Check position when content size changes
+        contentSizeObservation = scrollView.observe(\.contentSize, options: [.new, .old]) { [weak self] _, change in
+            guard let self,
+                  let oldSize = change.oldValue,
+                  let newSize = change.newValue,
+                  oldSize.height != newSize.height
+            else { return }
+
+            // Pin is armed first, then executed on the next content growth (user message append).
+            if self.pendingPin && newSize.height > oldSize.height {
+                self.pendingPin = false
+                self.applyPinAfterSend(contentHeightAfter: newSize.height)
+            } else if self.isPinned && self.runwayInset > 0 && newSize.height > oldSize.height {
+                let growth = newSize.height - oldSize.height
+                self.consumeRunway(by: growth)
+            }
+
             DispatchQueue.main.async {
                 self.checkAndUpdateScrollPosition()
             }
@@ -257,6 +279,79 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
         baseBottomInset = inset
         updateContentInset(preserveScrollPosition: preserveScrollPosition)
     }
+
+    // MARK: - Pin-to-top (public)
+
+    /// Arm pin-to-top: the next content append will be pinned to the top, and a runway will be created below.
+    func requestPinForNextContentAppend() {
+        guard let sv = scrollView else { return }
+
+        // Reset any previous pin/runway
+        pendingPin = true
+        isPinned = false
+        runwayInset = 0
+        pinnedOffset = 0
+
+        // For bottom-appended lists: the new message starts where content ends right now.
+        pendingPinMessageStartY = sv.contentSize.height
+        updateContentInset(preserveScrollPosition: true)
+    }
+
+    // MARK: - Pin-to-top (internal)
+
+    private func applyPinAfterSend(contentHeightAfter: CGFloat) {
+        guard let sv = scrollView else { return }
+
+        let viewportH = sv.bounds.height
+        guard viewportH > 0 else { return }
+
+        // Fresh base inset (no runway)
+        let keyboardOpenPadding: CGFloat = 8
+        let baseInset: CGFloat
+        if keyboardHeight > 0 {
+            baseInset = baseBottomInset + keyboardHeight + keyboardOpenPadding
+        } else {
+            baseInset = baseBottomInset + safeAreaBottom
+        }
+
+        // Pin so the new message appears at the top of the viewport (small padding for feel)
+        let topPadding: CGFloat = 8
+        let desiredPinnedOffset = max(0, pendingPinMessageStartY - topPadding)
+
+        // Current max offset with base inset only
+        let currentMaxOffset = max(0, contentHeightAfter - viewportH + baseInset)
+
+        // Runway is "just enough" extra inset to make maxOffset == desiredPinnedOffset
+        let neededRunway = max(0, desiredPinnedOffset - currentMaxOffset)
+
+        isPinned = true
+        pinnedOffset = desiredPinnedOffset
+        runwayInset = neededRunway
+        updateContentInset(preserveScrollPosition: true)
+
+        // No manual animation: jump to pinned offset
+        sv.setContentOffset(CGPoint(x: 0, y: desiredPinnedOffset), animated: false)
+
+        if neededRunway == 0 {
+            isPinned = false
+            pinnedOffset = 0
+        }
+    }
+
+    private func consumeRunway(by contentGrowth: CGFloat) {
+        guard contentGrowth > 0 else { return }
+
+        let newRunway = max(0, runwayInset - contentGrowth)
+        if newRunway == runwayInset { return }
+
+        runwayInset = newRunway
+        updateContentInset(preserveScrollPosition: true)
+
+        if newRunway == 0 {
+            isPinned = false
+            pinnedOffset = 0
+        }
+    }
     
     /// Adjust scroll position when composer grows to keep content visible.
     /// Only adjusts if user is near the bottom (within 100pt).
@@ -289,33 +384,5 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
         scrollView.setContentOffset(CGPoint(x: 0, y: clampedOffset), animated: false)
     }
     
-    /// Scroll so that new content appears at the top of the visible area (ChatGPT-style).
-    /// This leaves empty space below for the response to stream in.
-    /// - Parameter estimatedNewContentHeight: Approximate height of new content to show at top
-    func scrollNewContentToTop(estimatedHeight: CGFloat = 100) {
-        guard let scrollView = scrollView else { return }
-        
-        // Small delay to let content layout settle
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
-            guard let self = self, let scrollView = self.scrollView else { return }
-            
-            let contentHeight = scrollView.contentSize.height
-            let visibleHeight = scrollView.bounds.height
-            let topInset = scrollView.contentInset.top
-            
-            // Calculate offset to show new content at top:
-            // We want the bottom portion of content (new messages) to appear at the top of screen
-            // Offset = total content - visible area + top inset + small padding for the message
-            let targetOffset = contentHeight - visibleHeight + topInset + estimatedHeight
-            
-            // Only scroll if content is tall enough
-            let minOffset = -topInset
-            let offset = max(minOffset, targetOffset)
-            
-            UIView.animate(withDuration: 0.3, delay: 0, options: .curveEaseOut) {
-                scrollView.contentOffset = CGPoint(x: 0, y: offset)
-            }
-        }
-    }
 }
 

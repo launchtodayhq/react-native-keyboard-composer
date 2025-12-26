@@ -14,7 +14,7 @@ class KeyboardAwareWrapper: ExpoView, KeyboardAwareScrollHandlerDelegate {
     
     // Composer handling (like Android)
     private weak var composerContainer: UIView?
-    private weak var composerView: UIView?  // The actual KeyboardComposerView for height measurement
+    private weak var composerView: KeyboardComposerView?  // The actual KeyboardComposerView for height measurement
     private var safeAreaBottom: CGFloat = 0
     
     // Track composer height to detect changes (since props may not trigger observers with Fabric)
@@ -43,6 +43,12 @@ class KeyboardAwareWrapper: ExpoView, KeyboardAwareScrollHandlerDelegate {
         setupScrollToBottomButton()
         setupKeyboardObservers()
         setupPropertyObservers()
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleComposerDidSend(_:)),
+            name: .keyboardComposerDidSend,
+            object: nil
+        )
     }
     
     required init?(coder: NSCoder) {
@@ -85,8 +91,19 @@ class KeyboardAwareWrapper: ExpoView, KeyboardAwareScrollHandlerDelegate {
                   let newValue = change.newValue,
                   newValue > 0 else { return }
             
-            self.keyboardHandler.scrollNewContentToTop(estimatedHeight: 100)
+            self.keyboardHandler.requestPinForNextContentAppend()
         }
+    }
+
+    @objc private func handleComposerDidSend(_ notification: Notification) {
+        guard let sender = notification.object as? KeyboardComposerView else { return }
+
+        if composerView == nil {
+            composerView = findComposerView(in: self)
+        }
+
+        guard sender === composerView else { return }
+        keyboardHandler.requestPinForNextContentAppend()
     }
     
     // MARK: - Keyboard Observers
@@ -519,10 +536,10 @@ class KeyboardAwareWrapper: ExpoView, KeyboardAwareScrollHandlerDelegate {
     }
     
     /// Recursively find KeyboardComposerView in view hierarchy
-    private func findComposerView(in view: UIView) -> UIView? {
+    private func findComposerView(in view: UIView) -> KeyboardComposerView? {
         // Check if this view is a KeyboardComposerView
-        if type(of: view) == KeyboardComposerView.self {
-            return view
+        if let composer = view as? KeyboardComposerView {
+            return composer
         }
         
         // Search children
@@ -548,7 +565,24 @@ class KeyboardAwareWrapper: ExpoView, KeyboardAwareScrollHandlerDelegate {
     
     /// Scroll so new content appears at top (ChatGPT-style)
     func scrollNewContentToTop(estimatedHeight: CGFloat) {
-        keyboardHandler.scrollNewContentToTop(estimatedHeight: estimatedHeight)
+        keyboardHandler.requestPinForNextContentAppend()
+    }
+
+    // MARK: - Touch Routing (runway)
+
+    override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
+        if let sv = keyboardHandler.scrollView {
+            let svFrame = sv.frame
+            if point.y >= svFrame.minY && point.y <= svFrame.maxY {
+                let contentHeight = sv.contentSize.height
+                let offsetY = sv.contentOffset.y
+                let contentBottomScreen = svFrame.minY + (contentHeight - offsetY)
+                if point.y > contentBottomScreen {
+                    return sv
+                }
+            }
+        }
+        return super.hitTest(point, with: event)
     }
 }
 

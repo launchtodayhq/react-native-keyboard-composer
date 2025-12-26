@@ -292,6 +292,11 @@ class KeyboardComposerView: ExpoView {
       "text": textView.text ?? ""
     ])
 
+    NotificationCenter.default.post(
+      name: .keyboardComposerDidSend,
+      object: self
+    )
+
     textView.text = ""
     placeholderLabel.isHidden = false
     textView.resignFirstResponder()
@@ -377,6 +382,10 @@ class KeyboardComposerView: ExpoView {
     updateSendButtonState()
     onChangeText(["text": ""])
   }
+}
+
+extension Notification.Name {
+  static let keyboardComposerDidSend = Notification.Name("KeyboardComposerDidSend")
 }
 
 // MARK: - UITextViewDelegate
