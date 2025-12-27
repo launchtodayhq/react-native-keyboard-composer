@@ -180,11 +180,7 @@ class KeyboardAwareWrapper: ExpoView, KeyboardAwareScrollHandlerDelegate {
         // Track true keyboard state - this is authoritative
         isKeyboardOpen = isShowing
         currentKeyboardHeight = isShowing ? keyboardFrame.height : 0
-        
-        #if DEBUG
-        NSLog("[KeyboardWrapper] keyboard %@ height=%.0f", isShowing ? "show" : "hide", currentKeyboardHeight)
-        #endif
-        
+
         animateComposerAndButton(duration: duration, curve: curve)
     }
     
@@ -451,11 +447,7 @@ class KeyboardAwareWrapper: ExpoView, KeyboardAwareScrollHandlerDelegate {
     private func handleComposerHeightChange(newHeight: CGFloat, delta: CGFloat) {
         // Check if user is near bottom before making changes
         let isNearBottom = keyboardHandler.isUserNearBottom()
-        
-        #if DEBUG
-        NSLog("[KeyboardWrapper] composer height=%.0f delta=%.0f atBottom=%@", newHeight, delta, isNearBottom ? "yes" : "no")
-        #endif
-        
+
         if delta > 0 && isNearBottom {
             // When composer grows AND user is at bottom, scroll content up to keep last message visible
             keyboardHandler.adjustScrollForComposerGrowth(delta: delta)
@@ -482,9 +474,6 @@ class KeyboardAwareWrapper: ExpoView, KeyboardAwareScrollHandlerDelegate {
             keyboardHandler.setBaseInset(baseInset)
             keyboardHandler.attach(to: sv)
             hasAttached = true
-            #if DEBUG
-            NSLog("[KeyboardWrapper] attached scrollView=%@", String(describing: type(of: sv)))
-            #endif
         } else {
             // Will retry
         }
@@ -496,10 +485,8 @@ class KeyboardAwareWrapper: ExpoView, KeyboardAwareScrollHandlerDelegate {
             composerView = comp
             
             var container: UIView? = comp
-            var depth = 0
             while let parent = container?.superview, parent !== self {
                 container = parent
-                depth += 1
             }
             composerContainer = container
             

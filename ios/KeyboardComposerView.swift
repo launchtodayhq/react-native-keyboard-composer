@@ -68,7 +68,6 @@ class KeyboardComposerView: ExpoView {
   private let sendButton = UIButton(type: .system)
 
   // MARK: - Keyboard tracking
-  private var keyboardLayoutConstraint: NSLayoutConstraint?
   private var currentKeyboardHeight: CGFloat = 0
   private var displayLink: CADisplayLink?
   
@@ -171,7 +170,10 @@ class KeyboardComposerView: ExpoView {
     let buttonSize: CGFloat = 32
     let buttonX = bounds.width - 40
     let bottomPlacementY = bounds.height - 42
-    let centeredY = (bounds.height - buttonSize) / 2
+    // Optical centering tweak. Negative moves the button up.
+    // This is intentionally small and can be tuned by feel.
+    let centerYOffset: CGFloat = -1
+    let centeredY = ((bounds.height - buttonSize) / 2) + centerYOffset
     let isSingleLine = bounds.height <= (minHeight + 2)
     let buttonY = isSingleLine ? centeredY : bottomPlacementY
 
