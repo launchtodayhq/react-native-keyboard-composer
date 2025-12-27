@@ -6,7 +6,9 @@ import {
   useColorScheme,
   ScrollView,
   StatusBar,
+  TouchableOpacity,
 } from "react-native";
+import { Feather } from "@expo/vector-icons";
 import {
   SafeAreaProvider,
   useSafeAreaInsets,
@@ -146,12 +148,15 @@ function ChatScreen() {
 
   const colors = {
     background: isDark ? "#000000" : "#ffffff",
-    userBubble: "#007AFF",
-    assistantBubble: isDark ? "#2c2c2e" : "#e9e9eb",
-    userText: "#ffffff",
+    // Match Launch app ChatBubble styling
+    userBubble: isDark ? "#2a2a2a" : "#F4F4F4",
+    userText: isDark ? "#ffffff" : "#000000",
     assistantText: isDark ? "#ffffff" : "#000000",
     timestamp: isDark ? "#8e8e93" : "#8e8e93",
+    actionIcon: isDark ? "#8e8e93" : "#6e6e73",
   };
+
+  const noop = useCallback(() => {}, []);
 
   const handleSend = useCallback((text: string) => {
     if (!text.trim()) return;
@@ -171,7 +176,7 @@ function ChatScreen() {
       "I see what you mean. Good keyboard handling really does make a difference in chat UX. The native feel of smooth animations and proper content insets creates a much more polished experience.",
       "Great observation! Notice how the content adjusts as you type. This library handles all the edge cases: keyboard show/hide, input growing, maintaining scroll position, and more.",
       "Thanks for trying out the keyboard composer! This demonstrates ChatGPT-style pin-to-top behavior where new messages appear at the top with room for the response to stream in below.",
-      "This is a really long response to test how the pin-to-top feature handles content that exceeds the viewport height. When you send a message, it gets pinned at the top of the screen with empty space (the runway) below it for the AI response to stream into. This is a really long response to test how the pin-to-top feature handles content that exceeds the viewport height. When you send a message, it gets pinned at the top of the screen with empty space (the runway) below it for the AI response to stream into.This is a really long response to test how the pin-to-top feature handles content that exceeds the viewport height. When you send a message, it gets pinned at the top of the screen with empty space (the runway) below it for the AI response to stream into.This is a really long response to test how the pin-to-top feature handles content that exceeds the viewport height. When you send a message, it gets pinned at the top of the screen with empty space (the runway) below it for the AI response to stream into.",
+      "This is a really long response to test how the pin-to-top feature handles content that exceeds the viewport height. When you send a message, it gets pinned at the top of the screen with empty space (the runway) below it for the AI response to stream into.",
     ];
     // Use the last (long) response for testing, or random for variety
     const fullResponse = responses[responses.length - 1]; // Always use long response for testing
@@ -215,41 +220,23 @@ function ChatScreen() {
     if (!isUser && !item.text) {
       return (
         <View key={item.id} style={styles.typingIndicator}>
-          <View
-            style={[styles.bubble, { backgroundColor: colors.assistantBubble }]}
+          <Text
+            style={{ color: colors.assistantText, fontSize: scaleFont(16) }}
           >
-            <Text
-              style={{ color: colors.assistantText, fontSize: scaleFont(16) }}
-            >
-              ...
-            </Text>
-          </View>
+            ...
+          </Text>
         </View>
       );
     }
 
-    const messageContent = (
-      <View
-        style={[
-          styles.messageContainer,
-          isUser ? styles.userMessage : styles.assistantMessage,
-        ]}
-      >
-        <View
-          style={[
-            styles.bubble,
-            {
-              backgroundColor: isUser
-                ? colors.userBubble
-                : colors.assistantBubble,
-            },
-          ]}
-        >
+    const messageContent = isUser ? (
+      <View style={[styles.messageContainer, styles.userMessage]}>
+        <View style={[styles.bubble, { backgroundColor: colors.userBubble }]}>
           <Text
             style={[
               styles.messageText,
               {
-                color: isUser ? colors.userText : colors.assistantText,
+                color: colors.userText,
                 fontSize: scaleFont(16),
                 lineHeight: scaleFont(22),
               },
@@ -257,6 +244,49 @@ function ChatScreen() {
           >
             {item.text}
           </Text>
+        </View>
+      </View>
+    ) : (
+      // Match Launch app AI responses: no chat bubble, just text
+      <View style={[styles.messageContainer, styles.assistantMessage]}>
+        <Text
+          style={[
+            styles.messageText,
+            {
+              color: colors.assistantText,
+              fontSize: scaleFont(16),
+              lineHeight: scaleFont(22),
+            },
+          ]}
+        >
+          {item.text}
+        </Text>
+        <View style={styles.messageActions}>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={noop}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Feather name="copy" size={16} color={colors.actionIcon} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={noop}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Feather name="share" size={16} color={colors.actionIcon} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={noop}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Feather
+              name="more-horizontal"
+              size={16}
+              color={colors.actionIcon}
+            />
+          </TouchableOpacity>
         </View>
       </View>
     );
@@ -398,27 +428,34 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   messageContainer: {
-    marginBottom: 16,
-    maxWidth: "80%",
+    marginBottom: 32,
   },
   userMessage: {
-    alignSelf: "flex-end",
+    alignItems: "flex-end",
   },
   assistantMessage: {
-    alignSelf: "flex-start",
+    alignItems: "flex-start",
   },
   typingIndicator: {
-    marginBottom: 16,
-    alignSelf: "flex-start",
-    maxWidth: "80%",
+    marginBottom: 32,
+    alignItems: "flex-start",
   },
   bubble: {
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 18,
+    maxWidth: "80%",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 20,
   },
   messageText: {
     // fontSize and lineHeight set dynamically via scaleFont
+  },
+  messageActions: {
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 8,
+  },
+  actionButton: {
+    padding: 4,
   },
   // Composer styles - matches ai-chat.tsx pattern
   composerContainer: {

@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@legendapp/list": "^2.0.18",
+    "@expo/vector-icons": "15.0.3",
     "expo": "~54.0.29",
     "expo-linking": "~8.0.10",
     "react": "19.1.0",

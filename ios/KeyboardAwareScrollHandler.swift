@@ -26,6 +26,20 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
     private var pendingPinMessageStartY: CGFloat = 0
     private var pendingPinReady = false
     private var pendingPinContentHeightAfter: CGFloat = 0
+
+    private func recomputeRunwayInset(baseInset: CGFloat) {
+        guard isPinned, let sv = scrollView else { return }
+        let viewportH = sv.bounds.height
+        guard viewportH > 0 else { return }
+
+        let contentH = sv.contentSize.height
+        let currentMaxOffset = max(0, contentH - viewportH + baseInset)
+        runwayInset = max(0, pinnedOffset - currentMaxOffset)
+        if runwayInset == 0 {
+            isPinned = false
+            pinnedOffset = 0
+        }
+    }
     
     /// Get safe area bottom from window
     private var safeAreaBottom: CGFloat {
@@ -141,7 +155,9 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
         // When runway/pin is active, "bottom" means the pinned position (top of runway),
         // not the absolute maxOffset (which would be inside empty runway space).
         if isPinned || runwayInset > 0 {
-            return abs(scrollView.contentOffset.y - pinnedOffset) < 60
+            // Treat rubber-banding past the bottom as still "at bottom" so the scroll-to-bottom
+            // button doesn't flash during bounce.
+            return scrollView.contentOffset.y >= (pinnedOffset - 60)
         }
 
         let contentHeight = scrollView.contentSize.height
@@ -170,7 +186,7 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
         let contentGap: CGFloat = 24
         let minBottomPadding: CGFloat = 16
         let composerKeyboardGap: CGFloat = 10
-        let indicatorGapAboveInput: CGFloat = 2
+        let indicatorGapAboveInput: CGFloat = 1
         let composerHeight = max(0, baseBottomInset - contentGap)
 
         if keyboardHeight > 0 {
@@ -184,6 +200,12 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
             // Stop just above the composer when keyboard is closed
             let bottomOffset = max(safeAreaBottom, minBottomPadding)
             indicatorInset = bottomOffset + composerHeight + indicatorGapAboveInput
+        }
+
+        // Keep runway non-scrollable across keyboard/composer changes by recomputing how much
+        // extra inset is needed so that maxOffset == pinnedOffset.
+        if isPinned {
+            recomputeRunwayInset(baseInset: baseInset)
         }
         
         let totalInset = baseInset + runwayInset
@@ -222,6 +244,10 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
     
     func attach(to scrollView: UIScrollView) {
         self.scrollView = scrollView
+        if #available(iOS 13.0, *) {
+            // Ensure our manual `verticalScrollIndicatorInsets` values take effect.
+            scrollView.automaticallyAdjustsScrollIndicatorInsets = false
+        }
         scrollView.delegate = self
         updateContentInset()
         
@@ -266,11 +292,6 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
     // MARK: - UIScrollViewDelegate
     
     func scrollViewDidScroll(_ scrollView: UIScrollView) {
-        // Prevent scrolling into empty runway space. You can scroll up to see earlier messages,
-        // but you shouldn't be able to scroll down beyond the pinned position into blank space.
-        if (isPinned || runwayInset > 0) && scrollView.contentOffset.y > pinnedOffset {
-            scrollView.contentOffset = CGPoint(x: scrollView.contentOffset.x, y: pinnedOffset)
-        }
         checkAndUpdateScrollPosition()
     }
     
@@ -378,38 +399,35 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
         isPinned = true
         pinnedOffset = desiredPinnedOffset
         runwayInset = neededRunway
+        // updateContentInset will also reconcile runway for current baseInset
         updateContentInset(preserveScrollPosition: true)
 
         // Smooth pin animation (configurable feel)
         let pinDelay: TimeInterval = 0
-        let pinDuration: TimeInterval = 0.24
+        // Slightly longer so the deceleration is perceptible near the top
+        let pinDuration: TimeInterval = 0.28
         let targetOffset = CGPoint(x: 0, y: desiredPinnedOffset)
 
         // Animate contentOffset with a UIKit animator so we can control timing/curve.
-        let animator = UIViewPropertyAnimator(duration: pinDuration, curve: .easeOut) {
+        // Stronger ease-out curve: fast start, slow finish
+        let timing = UICubicTimingParameters(
+            controlPoint1: CGPoint(x: 0.10, y: 0.90),
+            controlPoint2: CGPoint(x: 0.20, y: 1.00)
+        )
+        let animator = UIViewPropertyAnimator(duration: pinDuration, timingParameters: timing)
+        animator.addAnimations {
             sv.contentOffset = targetOffset
         }
         animator.startAnimation(afterDelay: pinDelay)
 
-        if neededRunway == 0 {
-            isPinned = false
-            pinnedOffset = 0
-        }
+        // Clearing pinned state (if runway reaches 0) is handled by recomputeRunwayInset.
     }
 
     private func consumeRunway(by contentGrowth: CGFloat) {
         guard contentGrowth > 0 else { return }
 
-        let newRunway = max(0, runwayInset - contentGrowth)
-        if newRunway == runwayInset { return }
-
-        runwayInset = newRunway
+        // Content grew (streaming). Recompute runway based on new content size.
         updateContentInset(preserveScrollPosition: true)
-
-        if newRunway == 0 {
-            isPinned = false
-            pinnedOffset = 0
-        }
     }
     
     /// Adjust scroll position when composer grows to keep content visible.

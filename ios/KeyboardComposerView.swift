@@ -168,11 +168,18 @@ class KeyboardComposerView: ExpoView {
       height: placeholderHeight
     )
     
+    let buttonSize: CGFloat = 32
+    let buttonX = bounds.width - 40
+    let bottomPlacementY = bounds.height - 42
+    let centeredY = (bounds.height - buttonSize) / 2
+    let isSingleLine = bounds.height <= (minHeight + 2)
+    let buttonY = isSingleLine ? centeredY : bottomPlacementY
+
     sendButton.frame = CGRect(
-      x: bounds.width - 40,
-      y: bounds.height - 42,
-      width: 32,
-      height: 32
+      x: buttonX,
+      y: buttonY,
+      width: buttonSize,
+      height: buttonSize
     )
     
     if bounds.width != lastBoundsWidth {
