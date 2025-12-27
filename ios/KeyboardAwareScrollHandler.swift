@@ -75,7 +75,9 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
         
         // Check if at bottom BEFORE animation (only on initial show)
         if isInitialShow {
-            wasAtBottom = isNearBottom(scrollView)
+            // When pinned (runway active), don't treat this as "at bottom" for keyboard open behavior,
+            // otherwise we'll pull the pinned content down by scrolling to a non-runway maxOffset.
+            wasAtBottom = !isPinned && isNearBottom(scrollView)
         }
         keyboardHeight = newKeyboardHeight
         
@@ -89,7 +91,7 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
             options: animationOptions,
             animations: {
                 // Update content inset
-                self.updateContentInset()
+                self.updateContentInset(preserveScrollPosition: self.isPinned)
                 
                 // Scroll to bottom INSIDE animation block - ONLY on initial keyboard show
                 if isInitialShow && self.wasAtBottom {
@@ -136,6 +138,12 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
     }
     
     private func isNearBottom(_ scrollView: UIScrollView) -> Bool {
+        // When runway/pin is active, "bottom" means the pinned position (top of runway),
+        // not the absolute maxOffset (which would be inside empty runway space).
+        if isPinned || runwayInset > 0 {
+            return abs(scrollView.contentOffset.y - pinnedOffset) < 60
+        }
+
         let contentHeight = scrollView.contentSize.height
         let scrollViewHeight = scrollView.bounds.height
         let bottomInset = scrollView.contentInset.bottom
@@ -191,12 +199,19 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
     
     private func scrollToBottom(animated: Bool) {
         guard let scrollView = scrollView else { return }
-        
+
+        // When pin/runway is active, "bottom" should mean the pinned position (top of runway),
+        // not the absolute maxOffset which would land in empty runway space.
+        if isPinned || runwayInset > 0 {
+            scrollView.setContentOffset(CGPoint(x: 0, y: pinnedOffset), animated: animated)
+            return
+        }
+
         let contentHeight = scrollView.contentSize.height
         let scrollViewHeight = scrollView.bounds.height
         let bottomInset = scrollView.contentInset.bottom
         let maxOffset = max(0, contentHeight - scrollViewHeight + bottomInset)
-        
+
         scrollView.setContentOffset(CGPoint(x: 0, y: maxOffset), animated: animated)
     }
     
@@ -251,6 +266,11 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
     // MARK: - UIScrollViewDelegate
     
     func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        // Prevent scrolling into empty runway space. You can scroll up to see earlier messages,
+        // but you shouldn't be able to scroll down beyond the pinned position into blank space.
+        if (isPinned || runwayInset > 0) && scrollView.contentOffset.y > pinnedOffset {
+            scrollView.contentOffset = CGPoint(x: scrollView.contentOffset.x, y: pinnedOffset)
+        }
         checkAndUpdateScrollPosition()
     }
     
@@ -360,8 +380,16 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
         runwayInset = neededRunway
         updateContentInset(preserveScrollPosition: true)
 
-        // Use native scroll animation so it feels like the message travels from the input to the top.
-        sv.setContentOffset(CGPoint(x: 0, y: desiredPinnedOffset), animated: true)
+        // Smooth pin animation (configurable feel)
+        let pinDelay: TimeInterval = 0
+        let pinDuration: TimeInterval = 0.24
+        let targetOffset = CGPoint(x: 0, y: desiredPinnedOffset)
+
+        // Animate contentOffset with a UIKit animator so we can control timing/curve.
+        let animator = UIViewPropertyAnimator(duration: pinDuration, curve: .easeOut) {
+            sv.contentOffset = targetOffset
+        }
+        animator.startAnimation(afterDelay: pinDelay)
 
         if neededRunway == 0 {
             isPinned = false
