@@ -1,10 +1,16 @@
-import { requireNativeView } from "expo";
 import type { ReactNode } from "react";
 import type { ViewStyle, StyleProp } from "react-native";
+import { requireNativeViewManager } from "expo-modules-core";
 
 export interface KeyboardAwareWrapperProps {
   children?: ReactNode;
   style?: StyleProp<ViewStyle>;
+  /**
+   * Enables ChatGPT-style pin-to-top behavior (runway below the pinned user message).
+   *
+   * NOTE: If omitted, native defaults apply (to preserve existing behavior).
+   */
+  pinToTopEnabled?: boolean;
   /**
    * Extra bottom inset (composer height + gap).
    * Keyboard height is automatically handled by native code.
@@ -17,13 +23,23 @@ export interface KeyboardAwareWrapperProps {
   scrollToTopTrigger?: number;
 }
 
-// Native view - auto-named as "KeyboardComposer_KeyboardAwareWrapper"
-const NativeView: React.ComponentType<{
+// Native view (ExpoModulesCore):
+// Module name: "KeyboardComposer"
+// View name: "KeyboardAwareWrapper" (exported as "KeyboardComposer_KeyboardAwareWrapper" internally)
+type NativeKeyboardAwareWrapperProps = {
   style?: StyleProp<ViewStyle>;
+  pinToTopEnabled?: boolean;
   extraBottomInset?: number;
   scrollToTopTrigger?: number;
   children?: ReactNode;
-}> = requireNativeView("KeyboardComposer_KeyboardAwareWrapper");
+};
+
+const NativeView = (
+  requireNativeViewManager as unknown as (
+    moduleName: string,
+    viewName?: string
+  ) => React.ComponentType<NativeKeyboardAwareWrapperProps>
+)("KeyboardComposer", "KeyboardAwareWrapper");
 
 /**
  * Native wrapper that handles keyboard adjustments for ScrollView children.
@@ -42,12 +58,14 @@ const NativeView: React.ComponentType<{
 export function KeyboardAwareWrapper({
   children,
   style,
+  pinToTopEnabled,
   extraBottomInset = 0,
   scrollToTopTrigger = 0,
 }: KeyboardAwareWrapperProps) {
   return (
     <NativeView
       style={style}
+      {...(pinToTopEnabled === undefined ? {} : { pinToTopEnabled })}
       extraBottomInset={extraBottomInset}
       scrollToTopTrigger={scrollToTopTrigger}
     >

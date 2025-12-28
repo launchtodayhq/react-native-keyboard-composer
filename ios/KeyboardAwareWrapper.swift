@@ -32,6 +32,7 @@ class KeyboardAwareWrapper: ExpoView, KeyboardAwareScrollHandlerDelegate {
     // Base inset: composer height only (from JS)
     // Gap and safe area are handled natively
     // Using @objc dynamic to enable KVO - required because React Native/Expo sets props via Objective-C KVC
+    @objc dynamic var pinToTopEnabled: Bool = false
     @objc dynamic var extraBottomInset: CGFloat = 48
     
     /// Trigger scroll to top when this value changes (use timestamp/counter from JS)
@@ -91,6 +92,7 @@ class KeyboardAwareWrapper: ExpoView, KeyboardAwareScrollHandlerDelegate {
                   let newValue = change.newValue,
                   newValue > 0 else { return }
             
+            guard self.pinToTopEnabled else { return }
             self.keyboardHandler.requestPinForNextContentAppend()
         }
     }
@@ -103,6 +105,7 @@ class KeyboardAwareWrapper: ExpoView, KeyboardAwareScrollHandlerDelegate {
         }
 
         guard sender === composerView else { return }
+        guard pinToTopEnabled else { return }
         keyboardHandler.requestPinForNextContentAppend()
     }
     
@@ -552,6 +555,7 @@ class KeyboardAwareWrapper: ExpoView, KeyboardAwareScrollHandlerDelegate {
     
     /// Scroll so new content appears at top (ChatGPT-style)
     func scrollNewContentToTop(estimatedHeight: CGFloat) {
+        guard pinToTopEnabled else { return }
         keyboardHandler.requestPinForNextContentAppend()
     }
 

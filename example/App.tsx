@@ -335,6 +335,7 @@ function ChatScreen() {
       {/* KeyboardAwareWrapper manages both scroll content AND composer animation */}
       <KeyboardAwareWrapper
         style={styles.chatArea}
+        pinToTopEnabled={true}
         extraBottomInset={baseBottomInset}
       >
         {/* ScrollView with messages */}

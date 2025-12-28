@@ -156,6 +156,7 @@ Wrapper component that handles keyboard-aware scrolling.
 
 | Prop                 | Type                   | Default | Description                               |
 | -------------------- | ---------------------- | ------- | ----------------------------------------- |
+| `pinToTopEnabled`    | `boolean`              | `false` | Enables ChatGPT-style pin-to-top runway   |
 | `extraBottomInset`   | `number`               | `0`     | Bottom inset (typically composer height)  |
 | `scrollToTopTrigger` | `number`               | `0`     | Change value to scroll new content to top |
 | `style`              | `StyleProp<ViewStyle>` | -       | Container style                           |

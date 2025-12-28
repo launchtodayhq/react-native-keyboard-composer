@@ -62,6 +62,10 @@ public class KeyboardComposerModule: Module {
     // Second view in module - keyboard-aware wrapper
     // Auto-named as "KeyboardComposer_KeyboardAwareWrapper"
     View(KeyboardAwareWrapper.self) {
+      Prop("pinToTopEnabled") { (view: KeyboardAwareWrapper, value: Bool) in
+        view.pinToTopEnabled = value
+      }
+
       Prop("extraBottomInset") { (view: KeyboardAwareWrapper, value: CGFloat) in
         view.extraBottomInset = value
       }
