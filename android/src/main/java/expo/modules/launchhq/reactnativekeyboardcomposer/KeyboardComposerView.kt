@@ -90,6 +90,8 @@ class KeyboardComposerView(context: Context, appContext: AppContext) : ExpoView(
             updateButtonAppearance()
         }
 
+    internal var onNativeSend: (() -> Unit)? = null
+
     // MARK: - UI Elements
     private val editText: EditText
     private val sendButton: ImageButton
@@ -210,8 +212,10 @@ class KeyboardComposerView(context: Context, appContext: AppContext) : ExpoView(
         if (text.isEmpty()) return
 
         performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+        onNativeSend?.invoke()
         onSend(mapOf("text" to text))
         editText.setText("")
+        hideKeyboard()
         post { updateHeight() }
         updateSendButtonState()
     }

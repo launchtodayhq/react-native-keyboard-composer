@@ -162,6 +162,8 @@ Wrapper component that handles keyboard-aware scrolling.
 | `style`              | `StyleProp<ViewStyle>` | -       | Container style                           |
 | `children`           | `ReactNode`            | -       | Should contain a ScrollView               |
 
+When `pinToTopEnabled` is `true`, sending a message pins that message to the top and creates a non-scrollable “runway” below it for streamed AI responses (iOS + Android).
+
 ### `constants`
 
 Module constants for default values:
