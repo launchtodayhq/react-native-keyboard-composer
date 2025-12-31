@@ -46,7 +46,6 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
         get() = _pinToTopEnabled
         set(value) {
             _pinToTopEnabled = value
-            Log.w("KeyboardComposerNative", "pinToTopEnabled set -> $value")
             if (!value) {
                 clearPinnedState()
                 updateScrollPadding()
@@ -112,6 +111,7 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
     private var pendingPinReady = false
     private var pendingPinContentHeightAfter = 0
     private var lastContentHeight = 0
+
     
     // Layout listener to detect composer height changes
     private var composerLayoutListener: View.OnLayoutChangeListener? = null
@@ -201,17 +201,9 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
         val composer = findComposerView(this)
         
         if (sv != null) {
-            Log.w(
-                "KeyboardComposerNative",
-                "attach: scrollView=${sv.javaClass.simpleName}, composer=${composer?.javaClass?.simpleName}, safeAreaBottom=$safeAreaBottom"
-            )
             scrollView = sv
             composerView = composer
             composer?.onNativeSend = {
-                Log.w(
-                    "KeyboardComposerNative",
-                    "onNativeSend: pinToTopEnabled=$pinToTopEnabled, keyboardHeight=$currentKeyboardHeight"
-                )
                 if (pinToTopEnabled) {
                     requestPinForNextContentAppend()
                 }
@@ -410,6 +402,13 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
                         baseScrollY = closingStartScrollY - (maxKeyboardHeight - safeAreaBottom).coerceAtLeast(0)
                     }
                 }
+
+                // If we're about to pin (send just happened), do NOT let the IME close animation
+                // translate/drag the content. We'll pin after the keyboard closes.
+                if (!isOpening && (pendingPin || pendingPinReady)) {
+                    wasAtBottom = false
+                }
+
             }
 
             override fun onStart(
@@ -452,7 +451,6 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
                 val rootInsets = ViewCompat.getRootWindowInsets(sv)
                 val keyboardHeight = rootInsets?.getInsets(WindowInsetsCompat.Type.ime())?.bottom ?: 0
                 currentKeyboardHeight = keyboardHeight
-                Log.w("KeyboardComposerNative", "IME onEnd: keyboardHeight=$keyboardHeight pendingPinReady=$pendingPinReady")
                 
                 val effectiveKeyboard = (keyboardHeight - safeAreaBottom).coerceAtLeast(0)
                 applyComposerTranslation()
@@ -493,10 +491,6 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
                 // If content was appended while the IME was still open, finish pinning after it closes.
                 if (keyboardHeight == 0 && pendingPinReady) {
                     pendingPinReady = false
-                    Log.w(
-                        "KeyboardComposerNative",
-                        "IME onEnd: applying deferred pin contentAfter=$pendingPinContentHeightAfter"
-                    )
                     applyPinAfterSend(pendingPinContentHeightAfter)
                 }
             }
@@ -773,10 +767,6 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
 
         pendingPin = true
         pendingPinMessageStartY = child.height
-        Log.w(
-            "KeyboardComposerNative",
-            "requestPinForNextContentAppend: startY=$pendingPinMessageStartY, contentH=${child.height}, viewportH=${sv.height}, keyboardH=$currentKeyboardHeight"
-        )
     }
 
     private fun handleContentSizeChange(contentHeight: Int) {
@@ -790,19 +780,13 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
             if (currentKeyboardHeight > 0) {
                 pendingPinReady = true
                 pendingPinContentHeightAfter = contentHeight
-                Log.w(
-                    "KeyboardComposerNative",
-                    "contentSizeChange: defer pin (keyboardH=$currentKeyboardHeight), contentH=$contentHeight"
-                )
             } else {
-                Log.w("KeyboardComposerNative", "contentSizeChange: apply pin now, contentH=$contentHeight")
                 applyPinAfterSend(contentHeight)
             }
             return
         }
 
         if (isPinned) {
-            Log.w("KeyboardComposerNative", "contentSizeChange: pinned=true, recompute runway. contentH=$contentHeight")
             updateScrollPadding()
         }
     }
@@ -814,7 +798,10 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
         if (viewportH <= 0) return
 
         val basePaddingBottom = getBasePaddingBottomPx()
-        val baseMax = (contentHeightAfter - viewportH + basePaddingBottom).coerceAtLeast(0)
+        // IMPORTANT: use *unclamped* max scroll math so pin/runway works even when
+        // content is shorter than the viewport. (Clamping to 0 causes pinnedScrollY to
+        // be > maxScroll, which then gets clamped during keyboard open/close.)
+        val rawBaseMax = contentHeightAfter - viewportH + basePaddingBottom
 
         // Respect the actual content container's top spacing (no magic numbers):
         // - contentContainerStyle.paddingTop typically lands on the inner content view's paddingTop
@@ -829,16 +816,14 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
         )
         val desiredPinned = pendingPinMessageStartY.coerceAtLeast(0)
         val pinnedTarget = (desiredPinned - topGap).coerceAtLeast(0)
-        val neededRunway = (pinnedTarget - baseMax).coerceAtLeast(0)
+        // We want maxScroll == pinnedTarget, where:
+        // maxScroll = max(0, rawBaseMax + runwayInsetPx)
+        // => runwayInsetPx = pinnedTarget - rawBaseMax
+        val neededRunway = (pinnedTarget - rawBaseMax).coerceAtLeast(0)
 
         isPinned = neededRunway > 0
         pinnedScrollY = pinnedTarget
         runwayInsetPx = neededRunway
-        Log.w(
-            "KeyboardComposerNative",
-            "applyPinAfterSend: contentAfter=$contentHeightAfter viewport=$viewportH basePad=$basePaddingBottom baseMax=$baseMax desiredPinned=$desiredPinned topGap=$topGap pinnedTarget=$pinnedTarget neededRunway=$neededRunway isPinned=$isPinned"
-        )
-
         updateScrollPadding()
         sv.smoothScrollTo(0, pinnedScrollY)
     }
@@ -849,8 +834,9 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
         val viewportH = sv.height
         if (viewportH <= 0) return
 
-        val baseMax = (child.height - viewportH + basePaddingBottom).coerceAtLeast(0)
-        runwayInsetPx = (pinnedScrollY - baseMax).coerceAtLeast(0)
+        // Use *unclamped* base max so runway remains correct when content < viewport.
+        val rawBaseMax = child.height - viewportH + basePaddingBottom
+        runwayInsetPx = (pinnedScrollY - rawBaseMax).coerceAtLeast(0)
         if (runwayInsetPx == 0) {
             clearPinnedState()
         }

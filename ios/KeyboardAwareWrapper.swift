@@ -19,6 +19,7 @@ class KeyboardAwareWrapper: ExpoView, KeyboardAwareScrollHandlerDelegate {
     
     // Track composer height to detect changes (since props may not trigger observers with Fabric)
     private var lastComposerHeight: CGFloat = 0
+
     
     // Constants matching Android
     private let CONTENT_GAP: CGFloat = 24

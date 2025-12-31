@@ -26,6 +26,20 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
     private var pendingPinMessageStartY: CGFloat = 0
     private var pendingPinReady = false
     private var pendingPinContentHeightAfter: CGFloat = 0
+    private var isPinAnimating: Bool = false
+    private var userIsInteracting: Bool = false
+    private var stickToPinned: Bool = false
+
+    private func ensurePinnedOffset(reason: String) {
+        guard let sv = scrollView else { return }
+        guard isPinned || runwayInset > 0 else { return }
+        guard stickToPinned else { return }
+        guard !userIsInteracting else { return }
+        // Only correct meaningful drift; correcting every tick causes visible jitter and can kill animations.
+        if abs(sv.contentOffset.y - pinnedOffset) > 1.5 {
+            sv.setContentOffset(CGPoint(x: sv.contentOffset.x, y: pinnedOffset), animated: false)
+        }
+    }
 
     private func recomputeRunwayInset(baseInset: CGFloat) {
         guard isPinned, let sv = scrollView else { return }
@@ -33,8 +47,12 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
         guard viewportH > 0 else { return }
 
         let contentH = sv.contentSize.height
-        let currentMaxOffset = max(0, contentH - viewportH + baseInset)
-        runwayInset = max(0, pinnedOffset - currentMaxOffset)
+        // Use the *unclamped* maxOffset so we can compute runway correctly even when
+        // content is shorter than the viewport (rawMaxOffset is negative).
+        // maxOffset = max(0, rawMaxOffset + runwayInset). We want maxOffset == pinnedOffset.
+        // => runwayInset = pinnedOffset - rawMaxOffset
+        let rawMaxOffset = contentH - viewportH + baseInset
+        runwayInset = max(0, pinnedOffset - rawMaxOffset)
         if runwayInset == 0 {
             isPinned = false
             pinnedOffset = 0
@@ -215,7 +233,14 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
         
         // Restore scroll position if needed (prevents visual jump when not at bottom)
         if let savedOffset = savedOffset {
-            scrollView.contentOffset = savedOffset
+            // If a pin animation is in-flight, never "lock in" a mid-animation offset.
+            // Keep the scroll view at the pinned target so streaming/content growth doesn't
+            // cancel the pin and snap the content down.
+            if isPinAnimating && (isPinned || runwayInset > 0) {
+                scrollView.setContentOffset(CGPoint(x: savedOffset.x, y: pinnedOffset), animated: false)
+            } else {
+                scrollView.setContentOffset(savedOffset, animated: false)
+            }
         }
     }
     
@@ -269,7 +294,6 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
             // Pin is armed first, then executed on the next content growth (user message append).
             if self.pendingPin && newSize.height > oldSize.height {
                 self.pendingPin = false
-
                 // If the keyboard is still open/animating, defer the pin until keyboard hide completes
                 // to avoid the "content moves down, then up" effect.
                 if self.keyboardHeight > 0 || self.isKeyboardVisible {
@@ -293,6 +317,21 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
     
     func scrollViewDidScroll(_ scrollView: UIScrollView) {
         checkAndUpdateScrollPosition()
+    }
+
+    func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
+        userIsInteracting = true
+        stickToPinned = false
+    }
+
+    func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
+        if !decelerate {
+            userIsInteracting = false
+        }
+    }
+
+    func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
+        userIsInteracting = false
     }
     
     /// Check scroll position and notify delegate if changed
@@ -387,14 +426,17 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
         }
 
         // Pin so the new message appears at the top of the viewport (small padding for feel)
-        let topPadding: CGFloat = 8
+        // Increased to avoid being too close to the header/nav bar.
+        let topPadding: CGFloat = 16
         let desiredPinnedOffset = max(0, pendingPinMessageStartY - topPadding)
 
-        // Current max offset with base inset only
-        let currentMaxOffset = max(0, contentHeightAfter - viewportH + baseInset)
+        // Current max offset with base inset only (UNCLAMPED so we don't lose the deficit when content < viewport).
+        let rawMaxOffset = contentHeightAfter - viewportH + baseInset
 
         // Runway is "just enough" extra inset to make maxOffset == desiredPinnedOffset
-        let neededRunway = max(0, desiredPinnedOffset - currentMaxOffset)
+        // maxOffset = max(0, rawMaxOffset + runwayInset). We want maxOffset == desiredPinnedOffset.
+        // => runwayInset = desiredPinnedOffset - rawMaxOffset
+        let neededRunway = max(0, desiredPinnedOffset - rawMaxOffset)
 
         isPinned = true
         pinnedOffset = desiredPinnedOffset
@@ -408,6 +450,11 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
         let pinDuration: TimeInterval = 0.28
         let targetOffset = CGPoint(x: 0, y: desiredPinnedOffset)
 
+        // Mark pin animation in-flight so content growth won't preserve an intermediate offset.
+        isPinAnimating = true
+        // Don't enforce pinned offset while the pin animation is running (it would cancel the animation).
+        stickToPinned = false
+
         // Animate contentOffset with a UIKit animator so we can control timing/curve.
         // Stronger ease-out curve: fast start, slow finish
         let timing = UICubicTimingParameters(
@@ -417,6 +464,14 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
         let animator = UIViewPropertyAnimator(duration: pinDuration, timingParameters: timing)
         animator.addAnimations {
             sv.contentOffset = targetOffset
+        }
+        animator.addCompletion { [weak self, weak sv] _ in
+            guard let self, let sv else { return }
+            self.isPinAnimating = false
+            // Ensure we land exactly on the pinned target.
+            sv.setContentOffset(targetOffset, animated: false)
+            // Start enforcing pinned offset only after the animation completes (for streaming).
+            self.stickToPinned = true
         }
         animator.startAnimation(afterDelay: pinDelay)
 
@@ -428,6 +483,8 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
 
         // Content grew (streaming). Recompute runway based on new content size.
         updateContentInset(preserveScrollPosition: true)
+        // Force pinned target after each content growth (streaming), unless user is dragging.
+        ensurePinnedOffset(reason: "consumeRunway")
     }
     
     /// Adjust scroll position when composer grows to keep content visible.

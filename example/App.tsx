@@ -20,105 +20,8 @@ import {
 } from "@launchhq/react-native-keyboard-composer";
 import { useResponsive } from "./hooks/useResponsive";
 
-// Mock conversation data
-const INITIAL_MESSAGES: Message[] = [
-  {
-    id: "1",
-    text: "What problem does this keyboard composer solve?",
-    role: "user",
-    timestamp: Date.now() - 120000,
-  },
-  {
-    id: "2",
-    text: "Keyboard handling in chat apps is hard. This library ensures your content reacts correctly when the keyboard opens, closes, or when the input grows.",
-    role: "assistant",
-    timestamp: Date.now() - 115000,
-  },
-  {
-    id: "3",
-    text: "What do you mean by 'reacts correctly'?",
-    role: "user",
-    timestamp: Date.now() - 110000,
-  },
-  {
-    id: "4",
-    text: "Three key behaviors:\n\n• Keyboard opens → content pushes up to keep your last message visible\n• Input grows with text → content scrolls to maintain the gap\n• You scroll up then close keyboard → no awkward gaps or jumps",
-    role: "assistant",
-    timestamp: Date.now() - 105000,
-  },
-  {
-    id: "5",
-    text: "Does it know when to push content vs overlay?",
-    role: "user",
-    timestamp: Date.now() - 100000,
-  },
-  {
-    id: "6",
-    text: "Yes! If you're at the bottom reading the latest message, it pushes content up. If you've scrolled up to read history, the keyboard overlays without forcing a scroll.",
-    role: "assistant",
-    timestamp: Date.now() - 95000,
-  },
-  {
-    id: "7",
-    text: "What happens when I type multiple lines?",
-    role: "user",
-    timestamp: Date.now() - 90000,
-  },
-  {
-    id: "8",
-    text: "The composer auto-grows (up to maxHeight), and the content scrolls to maintain the gap between your last message and the input. No shrinking gap, no abrupt snaps.",
-    role: "assistant",
-    timestamp: Date.now() - 85000,
-  },
-  {
-    id: "9",
-    text: "Is this built for AI chat apps?",
-    role: "user",
-    timestamp: Date.now() - 80000,
-  },
-  {
-    id: "10",
-    text: "Exactly. Built for apps like ChatGPT and v0 where you need:\n\n• Auto-growing input for long prompts\n• Streaming support with stop button\n• Scroll-to-bottom button when you scroll away",
-    role: "assistant",
-    timestamp: Date.now() - 75000,
-  },
-  {
-    id: "11",
-    text: "Does it work on both iOS and Android?",
-    role: "user",
-    timestamp: Date.now() - 70000,
-  },
-  {
-    id: "12",
-    text: "Yes, same behavior on both platforms. Native implementations handle the platform differences so you get consistent UX.\n\n• iOS 15+\n• Android API 21+",
-    role: "assistant",
-    timestamp: Date.now() - 65000,
-  },
-  {
-    id: "13",
-    text: "How do I install it?",
-    role: "user",
-    timestamp: Date.now() - 60000,
-  },
-  {
-    id: "14",
-    text: "pnpm add @launchhq/react-native-keyboard-composer\n\nThen 'npx expo prebuild' for Expo projects. That's it!",
-    role: "assistant",
-    timestamp: Date.now() - 55000,
-  },
-  {
-    id: "15",
-    text: "This is exactly what I needed 🎉",
-    role: "user",
-    timestamp: Date.now() - 50000,
-  },
-  {
-    id: "16",
-    text: "Try it out! Type below and watch the content react as you type. Scroll up to see the scroll-to-bottom button appear. 🚀",
-    role: "assistant",
-    timestamp: Date.now() - 45000,
-  },
-];
+// Start with an empty conversation to verify pin-to-top behavior on first send
+const INITIAL_MESSAGES: Message[] = [];
 
 interface Message {
   id: string;
@@ -176,7 +79,6 @@ function ChatScreen() {
       "I see what you mean. Good keyboard handling really does make a difference in chat UX. The native feel of smooth animations and proper content insets creates a much more polished experience.",
       "Great observation! Notice how the content adjusts as you type. This library handles all the edge cases: keyboard show/hide, input growing, maintaining scroll position, and more.",
       "Thanks for trying out the keyboard composer! This demonstrates ChatGPT-style pin-to-top behavior where new messages appear at the top with room for the response to stream in below.",
-      "This is a really long response to test how the pin-to-top feature handles content that exceeds the viewport height. When you send a message, it gets pinned at the top of the screen with empty space (the runway) below it for the AI response to stream into.",
     ];
     // Use the last (long) response for testing, or random for variety
     const fullResponse = responses[responses.length - 1]; // Always use long response for testing

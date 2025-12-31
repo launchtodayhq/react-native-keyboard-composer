@@ -63,7 +63,6 @@ class KeyboardComposerModule : Module() {
         // Auto-named as "KeyboardComposer_KeyboardAwareWrapper"
         View(KeyboardAwareWrapper::class) {
             Prop("pinToTopEnabled") { view: KeyboardAwareWrapper, value: Boolean ->
-                Log.w("KeyboardComposerNative", "Prop pinToTopEnabled -> $value")
                 view.pinToTopEnabled = value
             }
 
