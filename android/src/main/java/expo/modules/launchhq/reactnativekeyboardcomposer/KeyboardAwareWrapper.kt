@@ -180,7 +180,10 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
     private fun getBasePaddingBottomPx(): Int {
         val contentGap = dpToPx(CONTENT_GAP_DP)
         val composerHeight = if (lastComposerHeight > 0) lastComposerHeight else dpToPx(extraBottomInset.toInt())
-        val bottomSpace = if (currentKeyboardHeight > 0) currentKeyboardHeight else safeAreaBottom
+        // When the IME is dismissing, some devices report intermediate IME heights that dip
+        // below the navigation bar inset. Never allow bottom space to go below safeAreaBottom,
+        // otherwise the composer can briefly slide behind the nav bar and then jump back up.
+        val bottomSpace = maxOf(safeAreaBottom, currentKeyboardHeight)
         return composerHeight + contentGap + bottomSpace
     }
 
@@ -263,7 +266,8 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
     private fun applyComposerTranslation() {
         val container = composerContainer ?: return
         val composerGap = dpToPx(COMPOSER_KEYBOARD_GAP_DP)
-        val composerBottomOffset = if (currentKeyboardHeight > 0) currentKeyboardHeight else safeAreaBottom
+        // Clamp to safe area so the composer never dips behind the nav bar during IME close.
+        val composerBottomOffset = maxOf(safeAreaBottom, currentKeyboardHeight)
         container.translationY = -(composerBottomOffset + composerGap).toFloat()
     }
     
@@ -455,7 +459,8 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
                 val effectiveKeyboard = (keyboardHeight - safeAreaBottom).coerceAtLeast(0)
                 applyComposerTranslation()
                 
-                val bottomSpace = if (keyboardHeight > 0) keyboardHeight else safeAreaBottom
+                // Clamp to safe area so padding never dips behind nav bar during IME close.
+                val bottomSpace = maxOf(safeAreaBottom, keyboardHeight)
                 // Use measured composer height (pixels) or convert extraBottomInset from DP
                 val composerHeight = if (lastComposerHeight > 0) lastComposerHeight else dpToPx(extraBottomInset.toInt())
                 val basePadding = composerHeight + contentGap + bottomSpace
