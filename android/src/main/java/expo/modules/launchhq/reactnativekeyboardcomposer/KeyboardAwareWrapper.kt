@@ -1,24 +1,14 @@
 package expo.modules.launchhq.reactnativekeyboardcomposer
 
-import android.animation.Animator
-import android.animation.AnimatorListenerAdapter
 import android.content.Context
-import android.graphics.Canvas
-import android.graphics.Color
-import android.graphics.Paint
-import android.graphics.Path
-import android.graphics.drawable.Drawable
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.view.ViewTreeObserver
 import android.widget.FrameLayout
-import android.widget.ImageButton
 import android.widget.ScrollView
-import android.util.Log
 import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsAnimationCompat
 import androidx.core.view.WindowInsetsCompat
 import expo.modules.kotlin.AppContext
 import expo.modules.kotlin.views.ExpoView
@@ -90,16 +80,18 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
     private var safeAreaBottom = 0
     private var currentKeyboardHeight = 0
     
-    private var wasAtBottom = false
-    private var baseScrollY = 0
-    private var isOpening = false
-    private var closingStartScrollY = 0
-    private var closingStartTranslation = 0
-    private var maxKeyboardHeight = 0
-    
-    private var scrollToBottomButton: ImageButton? = null
-    private var isScrollButtonVisible = false
-    private var isAnimatingScrollButton = false
+    private val scrollToBottomButtonController: ScrollToBottomButtonController by lazy {
+        ScrollToBottomButtonController(
+            context = context,
+            parent = this,
+            buttonSizePx = dpToPx(BUTTON_SIZE_DP),
+            dpToPxInt = { dpToPx(it) },
+            dpToPxFloat = { dpToPx(it) },
+            isDarkMode = { isDarkMode() },
+            calculateTranslationY = { calculateButtonTranslationY() },
+            onClick = { scrollToBottom() }
+        )
+    }
     private var isAtBottom = true
 
     // Pin-to-top + runway state (Android uses paddingBottom as the "inset")
@@ -119,7 +111,7 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
     init {
         clipChildren = false
         clipToPadding = false
-        setupScrollToBottomButton()
+        scrollToBottomButtonController.createIfNeeded()
     }
     
     override fun onAttachedToWindow() {
@@ -130,7 +122,7 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
                 safeAreaBottom = newSafeAreaBottom
                 applyComposerTranslation()
                 // Update button position now that we have correct safe area
-                updateScrollButtonPosition()
+                scrollToBottomButtonController.updatePosition()
                 updateScrollPadding()
             }
             insets
@@ -143,7 +135,7 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
             // Pull from root insets once after layout so the composer isn't under the nav bar on first paint.
             if (updateSafeAreaBottomFromRootInsets()) {
                 applyComposerTranslation()
-                updateScrollButtonPosition()
+                scrollToBottomButtonController.updatePosition()
                 updateScrollPadding()
             }
         }
@@ -154,23 +146,17 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
         
         val width = right - left
         val height = bottom - top
+        val buttonView = scrollToBottomButtonController.getButtonView()
         
         for (i in 0 until childCount) {
             val child = getChildAt(i)
-            if (child !== scrollToBottomButton) {
+            if (child !== buttonView) {
                 child.layout(0, 0, width, height)
             }
         }
-        
-        scrollToBottomButton?.let { button ->
-            val buttonSize = dpToPx(BUTTON_SIZE_DP)
-            val buttonLeft = (width - buttonSize) / 2
-            val buttonTop = height - buttonSize
-            button.layout(buttonLeft, buttonTop, buttonLeft + buttonSize, buttonTop + buttonSize)
-            button.bringToFront()
-        }
-        
-        updateScrollButtonPosition()
+
+        scrollToBottomButtonController.layout(width, height)
+        scrollToBottomButtonController.updatePosition()
         
         if (!hasAttached) {
             post { findAndAttachViews() }
@@ -376,132 +362,32 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
         sv.clipToPadding = false
         
         val contentGap = dpToPx(CONTENT_GAP_DP)
-        val composerGap = dpToPx(COMPOSER_KEYBOARD_GAP_DP)
         // extraBottomInset is in DP (from JS), convert to pixels
         // But prefer lastComposerHeight if available (already in pixels)
         val composerHeight = if (lastComposerHeight > 0) lastComposerHeight else dpToPx(extraBottomInset.toInt())
         val initialPadding = composerHeight + contentGap + safeAreaBottom
         sv.setPadding(sv.paddingLeft, sv.paddingTop, sv.paddingRight, initialPadding)
         applyComposerTranslation()
-        
-        val callback = object : WindowInsetsAnimationCompat.Callback(DISPATCH_MODE_CONTINUE_ON_SUBTREE) {
-            
-            override fun onPrepare(animation: WindowInsetsAnimationCompat) {
-                if (animation.typeMask and WindowInsetsCompat.Type.ime() == 0) return
-                
-                val maxScroll = getMaxScroll(sv)
-                val contentHeight = sv.getChildAt(0)?.height ?: 0
-                
-                if (currentKeyboardHeight == 0) {
-                    isOpening = true
-                    wasAtBottom = !isPinned && isNearBottom(sv)
-                    baseScrollY = sv.scrollY
-                } else {
-                    isOpening = false
-                    wasAtBottom = !isPinned && isNearBottom(sv)
-                    closingStartScrollY = sv.scrollY
-                    closingStartTranslation = sv.getChildAt(0)?.translationY?.toInt() ?: 0
-                    maxKeyboardHeight = currentKeyboardHeight
-                    if (wasAtBottom) {
-                        baseScrollY = closingStartScrollY - (maxKeyboardHeight - safeAreaBottom).coerceAtLeast(0)
-                    }
-                }
 
-                // If we're about to pin (send just happened), do NOT let the IME close animation
-                // translate/drag the content. We'll pin after the keyboard closes.
-                if (!isOpening && (pendingPin || pendingPinReady)) {
-                    wasAtBottom = false
-                }
-
-            }
-
-            override fun onStart(
-                animation: WindowInsetsAnimationCompat,
-                bounds: WindowInsetsAnimationCompat.BoundsCompat
-            ): WindowInsetsAnimationCompat.BoundsCompat = bounds
-
-            override fun onProgress(
-                insets: WindowInsetsCompat,
-                runningAnimations: MutableList<WindowInsetsAnimationCompat>
-            ): WindowInsetsCompat {
-                val imeAnimation = runningAnimations.find { 
-                    it.typeMask and WindowInsetsCompat.Type.ime() != 0 
-                } ?: return insets
-                
-                val keyboardHeight = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom
-                currentKeyboardHeight = keyboardHeight
-                
-                val effectiveKeyboard = (keyboardHeight - safeAreaBottom).coerceAtLeast(0)
-                applyComposerTranslation()
-                
-                updateScrollButtonPosition()
-                
-                if (wasAtBottom) {
-                    val contentTranslation = if (isOpening) {
-                        -effectiveKeyboard
-                    } else {
-                        val maxEffectiveKeyboard = (maxKeyboardHeight - safeAreaBottom).coerceAtLeast(0)
-                        closingStartTranslation + (maxEffectiveKeyboard - effectiveKeyboard)
-                    }
-                    sv.getChildAt(0)?.translationY = contentTranslation.toFloat()
-                }
-                
-                return insets
-            }
-
-            override fun onEnd(animation: WindowInsetsAnimationCompat) {
-                if (animation.typeMask and WindowInsetsCompat.Type.ime() == 0) return
-                
-                val rootInsets = ViewCompat.getRootWindowInsets(sv)
-                val keyboardHeight = rootInsets?.getInsets(WindowInsetsCompat.Type.ime())?.bottom ?: 0
-                currentKeyboardHeight = keyboardHeight
-                
-                val effectiveKeyboard = (keyboardHeight - safeAreaBottom).coerceAtLeast(0)
-                applyComposerTranslation()
-                
-                // Clamp to safe area so padding never dips behind nav bar during IME close.
-                val bottomSpace = maxOf(safeAreaBottom, keyboardHeight)
-                // Use measured composer height (pixels) or convert extraBottomInset from DP
-                val composerHeight = if (lastComposerHeight > 0) lastComposerHeight else dpToPx(extraBottomInset.toInt())
-                val basePadding = composerHeight + contentGap + bottomSpace
-                if (isPinned) {
-                    recomputeRunwayInset(basePadding)
-                }
-                val finalPadding = basePadding + runwayInsetPx
-                sv.setPadding(sv.paddingLeft, sv.paddingTop, sv.paddingRight, finalPadding)
-                
-                val maxScroll = getMaxScroll(sv)
-                val currentScrollY = sv.scrollY
-                
-                if (wasAtBottom) {
-                    val desiredScrollY = baseScrollY + effectiveKeyboard
-                    val finalScrollY = if (maxScroll <= 0) 0 else desiredScrollY.coerceAtLeast(0)
-                    sv.scrollY = finalScrollY
-                    val actualScrollY = sv.scrollY
-                    val remainingTranslation = actualScrollY - desiredScrollY
-                    sv.getChildAt(0)?.translationY = if (maxScroll <= 0) 0f else remainingTranslation.toFloat()
-                } else {
-                    // User was NOT at bottom - reset translation and clamp scroll position
-                    sv.getChildAt(0)?.translationY = 0f
-                    
-                    // When keyboard closes, clamp scroll if past maxScroll
-                    if (currentScrollY > maxScroll && maxScroll >= 0) {
-                        sv.scrollY = maxScroll
-                    }
-                }
-                
-                updateScrollButtonPosition()
-                post { checkAndUpdateScrollPosition() }
-
-                // If content was appended while the IME was still open, finish pinning after it closes.
-                if (keyboardHeight == 0 && pendingPinReady) {
-                    pendingPinReady = false
-                    applyPinAfterSend(pendingPinContentHeightAfter)
-                }
-            }
-        }
-
-        ViewCompat.setWindowInsetsAnimationCallback(sv, callback)
+        ImeKeyboardAnimationController(
+            scrollView = sv,
+            getSafeAreaBottom = { safeAreaBottom },
+            getCurrentKeyboardHeight = { currentKeyboardHeight },
+            setCurrentKeyboardHeight = { currentKeyboardHeight = it },
+            applyComposerTranslation = { applyComposerTranslation() },
+            updateScrollButtonPosition = { updateScrollButtonPosition() },
+            updateScrollPadding = { updateScrollPadding() },
+            getMaxScroll = { scroll -> getMaxScroll(scroll) },
+            isNearBottom = { scroll -> isNearBottom(scroll) },
+            isPinned = { isPinned },
+            isPinPendingOrDeferred = { pendingPin || pendingPinReady },
+            getPendingPinReady = { pendingPinReady },
+            setPendingPinReady = { pendingPinReady = it },
+            getPendingPinContentHeightAfter = { pendingPinContentHeightAfter },
+            applyPinAfterSend = { contentAfter -> applyPinAfterSend(contentAfter) },
+            postToUi = { runnable -> post(runnable) },
+            checkAndUpdateScrollPosition = { checkAndUpdateScrollPosition() }
+        ).attach()
     }
 
     private fun dpToPx(dp: Int): Int {
@@ -520,120 +406,16 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
         )
     }
     
-    private fun setupScrollToBottomButton() {
-        val buttonSize = dpToPx(BUTTON_SIZE_DP)
-        
-        val button = ImageButton(context).apply {
-            setImageDrawable(createScrollButtonDrawable(buttonSize))
-            scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
-            contentDescription = "Scroll to bottom"
-            
-            // Use the drawable as background so elevation shadow works
-            background = createScrollButtonDrawable(buttonSize)
-            setImageDrawable(null)  // Don't need image since background has the content
-            
-            // Shadow via elevation (matches iOS shadowRadius: 4, shadowOpacity: 0.15)
-            elevation = dpToPx(4).toFloat()
-            
-            // Make outline circular for proper shadow shape
-            outlineProvider = object : android.view.ViewOutlineProvider() {
-                override fun getOutline(view: View, outline: android.graphics.Outline) {
-                    outline.setOval(0, 0, view.width, view.height)
-                }
-            }
-            clipToOutline = false  // Don't clip, just use for shadow
-            
-            alpha = 0f
-            visibility = View.GONE
-            
-            setOnClickListener {
-                scrollToBottom()
-            }
-        }
-        
-        val params = FrameLayout.LayoutParams(buttonSize, buttonSize).apply {
-            gravity = Gravity.CENTER_HORIZONTAL or Gravity.BOTTOM
-        }
-        addView(button, params)
-        scrollToBottomButton = button
-    }
-    
-    private fun createScrollButtonDrawable(size: Int): Drawable {
-        return object : Drawable() {
-            private val circlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = getButtonCircleColor()
-                style = Paint.Style.FILL
-            }
-            
-            private val arrowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = getButtonArrowColor()
-                style = Paint.Style.STROKE
-                strokeWidth = dpToPx(2.5f).toFloat()  // Slightly thicker for 42dp button
-                strokeCap = Paint.Cap.ROUND
-                strokeJoin = Paint.Join.ROUND
-            }
-            
-            override fun draw(canvas: Canvas) {
-                val bounds = bounds
-                val cx = bounds.exactCenterX()
-                val cy = bounds.exactCenterY()
-                val radius = minOf(bounds.width(), bounds.height()) / 2f
-                
-                canvas.drawCircle(cx, cy, radius, circlePaint)
-                
-                val arrowSize = radius * 0.7f
-                val arrowPath = Path().apply {
-                    moveTo(cx, cy - arrowSize * 0.5f)
-                    lineTo(cx, cy + arrowSize * 0.5f)
-                    moveTo(cx - arrowSize * 0.5f, cy + arrowSize * 0.1f)
-                    lineTo(cx, cy + arrowSize * 0.6f)
-                    lineTo(cx + arrowSize * 0.5f, cy + arrowSize * 0.1f)
-                }
-                canvas.drawPath(arrowPath, arrowPaint)
-            }
-            
-            override fun setAlpha(alpha: Int) {
-                circlePaint.alpha = alpha
-                arrowPaint.alpha = alpha
-            }
-            
-            override fun setColorFilter(colorFilter: android.graphics.ColorFilter?) {
-                circlePaint.colorFilter = colorFilter
-                arrowPaint.colorFilter = colorFilter
-            }
-            
-            override fun getOpacity(): Int = android.graphics.PixelFormat.TRANSLUCENT
-            override fun getIntrinsicWidth(): Int = size
-            override fun getIntrinsicHeight(): Int = size
-        }
-    }
-    
-    private fun getButtonCircleColor(): Int {
-        // Light mode: white circle, Dark mode: dark circle
-        return if (isDarkMode()) Color.parseColor("#2C2C2E") else Color.WHITE
-    }
-    
-    private fun getButtonArrowColor(): Int {
-        // Light mode: black arrow, Dark mode: white arrow
-        return if (isDarkMode()) Color.WHITE else Color.BLACK
-    }
-    
     private fun isDarkMode(): Boolean {
         val nightModeFlags = resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK
         return nightModeFlags == android.content.res.Configuration.UI_MODE_NIGHT_YES
     }
     
     private fun updateScrollButtonPosition() {
-        // Don't update position during show/hide animation
-        if (isAnimatingScrollButton) return
-        
-        val button = scrollToBottomButton ?: return
-        button.translationY = calculateButtonTranslationY()
+        scrollToBottomButtonController.updatePosition()
     }
     
     private fun showScrollButton() {
-        if (isScrollButtonVisible) return
-        
         // If composer height not measured yet, try to get it now
         if (lastComposerHeight <= 0) {
             composerView?.let { composer ->
@@ -642,32 +424,7 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
                 }
             }
         }
-        
-        isScrollButtonVisible = true
-        isAnimatingScrollButton = true
-        
-        scrollToBottomButton?.let { button ->
-            val baseTranslationY = calculateButtonTranslationY()
-            
-            // Start 12dp lower (slide up animation)
-            button.translationY = baseTranslationY + dpToPx(12)
-            button.alpha = 0f
-            button.visibility = View.VISIBLE
-            
-            button.animate()
-                .alpha(1f)
-                .translationY(baseTranslationY)
-                .setDuration(250)
-                .setInterpolator(android.view.animation.DecelerateInterpolator())
-                .setListener(object : AnimatorListenerAdapter() {
-                    override fun onAnimationEnd(animation: Animator) {
-                        isAnimatingScrollButton = false
-                        // Recalculate position in case lastComposerHeight changed during animation
-                        updateScrollButtonPosition()
-                    }
-                })
-                .start()
-        }
+        scrollToBottomButtonController.show()
     }
     
     private fun calculateButtonTranslationY(): Float {
@@ -687,29 +444,7 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
     }
     
     private fun hideScrollButton() {
-        if (!isScrollButtonVisible) return
-        isScrollButtonVisible = false
-        isAnimatingScrollButton = true
-        
-        scrollToBottomButton?.let { button ->
-            // Get current position (slide down animation)
-            val currentTranslationY = button.translationY
-            
-            button.animate()
-                .alpha(0f)
-                .translationY(currentTranslationY + dpToPx(12))
-                .setDuration(180)
-                .setInterpolator(android.view.animation.AccelerateInterpolator())
-                .setListener(object : AnimatorListenerAdapter() {
-                    override fun onAnimationEnd(animation: Animator) {
-                        button.visibility = View.GONE
-                        // Reset to correct position for next show
-                        updateScrollButtonPosition()
-                        isAnimatingScrollButton = false
-                    }
-                })
-                .start()
-        }
+        scrollToBottomButtonController.hide()
     }
     
     private fun scrollToBottom() {
@@ -803,32 +538,18 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
         if (viewportH <= 0) return
 
         val basePaddingBottom = getBasePaddingBottomPx()
-        // IMPORTANT: use *unclamped* max scroll math so pin/runway works even when
-        // content is shorter than the viewport. (Clamping to 0 causes pinnedScrollY to
-        // be > maxScroll, which then gets clamped during keyboard open/close.)
-        val rawBaseMax = contentHeightAfter - viewportH + basePaddingBottom
-
-        // Respect the actual content container's top spacing (no magic numbers):
-        // - contentContainerStyle.paddingTop typically lands on the inner content view's paddingTop
-        // - some RN layouts may express this as first-child top offset
-        // - also include ScrollView paddingTop as a fallback
-        val contentGroup = child as? ViewGroup
-        val topGap = maxOf(
-            0,
-            sv.paddingTop,
-            child.paddingTop,
-            if (contentGroup != null && contentGroup.childCount > 0) contentGroup.getChildAt(0).top else 0
+        val result = PinToTopRunway.computeApplyPin(
+            contentHeightAfter = contentHeightAfter,
+            viewportH = viewportH,
+            basePaddingBottom = basePaddingBottom,
+            pendingPinMessageStartY = pendingPinMessageStartY,
+            sv = sv,
+            child = child
         )
-        val desiredPinned = pendingPinMessageStartY.coerceAtLeast(0)
-        val pinnedTarget = (desiredPinned - topGap).coerceAtLeast(0)
-        // We want maxScroll == pinnedTarget, where:
-        // maxScroll = max(0, rawBaseMax + runwayInsetPx)
-        // => runwayInsetPx = pinnedTarget - rawBaseMax
-        val neededRunway = (pinnedTarget - rawBaseMax).coerceAtLeast(0)
 
-        isPinned = neededRunway > 0
-        pinnedScrollY = pinnedTarget
-        runwayInsetPx = neededRunway
+        isPinned = result.isPinned
+        pinnedScrollY = result.pinnedScrollY
+        runwayInsetPx = result.runwayInsetPx
         updateScrollPadding()
         sv.smoothScrollTo(0, pinnedScrollY)
     }
@@ -839,9 +560,12 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
         val viewportH = sv.height
         if (viewportH <= 0) return
 
-        // Use *unclamped* base max so runway remains correct when content < viewport.
-        val rawBaseMax = child.height - viewportH + basePaddingBottom
-        runwayInsetPx = (pinnedScrollY - rawBaseMax).coerceAtLeast(0)
+        runwayInsetPx = PinToTopRunway.computeRunwayInsetPx(
+            childHeight = child.height,
+            viewportH = viewportH,
+            basePaddingBottom = basePaddingBottom,
+            pinnedScrollY = pinnedScrollY
+        )
         if (runwayInsetPx == 0) {
             clearPinnedState()
         }
