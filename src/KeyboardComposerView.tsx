@@ -40,6 +40,7 @@ const KeyboardComposerView = forwardRef<
       onKeyboardHeightChange,
       onComposerFocus,
       onComposerBlur,
+      style,
       ...rest
     } = props;
 
@@ -99,6 +100,9 @@ const KeyboardComposerView = forwardRef<
 
     return (
       <NativeView
+        // Default to filling the parent container (common usage is inside a fixed-height wrapper).
+        // Without a style, React Native can lay this out at 0x0 on Android.
+        style={[{ flex: 1, alignSelf: "stretch" }, style]}
         onChangeText={handleChangeText}
         onSend={handleSend}
         onStop={handleStop}

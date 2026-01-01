@@ -5,8 +5,9 @@ enum WrapperPropertyObservers {
     static func setup(
         wrapper: KeyboardAwareWrapper,
         onExtraBottomInsetChange: @escaping (_ oldValue: CGFloat, _ newValue: CGFloat) -> Void,
-        onScrollToTopTrigger: @escaping () -> Void
-    ) -> (NSKeyValueObservation, NSKeyValueObservation) {
+        onScrollToTopTrigger: @escaping () -> Void,
+        onPinToTopEnabledChange: @escaping (_ oldValue: Bool, _ newValue: Bool) -> Void
+    ) -> (NSKeyValueObservation, NSKeyValueObservation, NSKeyValueObservation) {
         let extraObs = wrapper.observe(\.extraBottomInset, options: [.old, .new]) { _, change in
             guard let oldValue = change.oldValue,
                   let newValue = change.newValue,
@@ -19,7 +20,14 @@ enum WrapperPropertyObservers {
             onScrollToTopTrigger()
         }
 
-        return (extraObs, triggerObs)
+        let pinObs = wrapper.observe(\.pinToTopEnabled, options: [.old, .new]) { _, change in
+            guard let oldValue = change.oldValue,
+                  let newValue = change.newValue,
+                  oldValue != newValue else { return }
+            onPinToTopEnabledChange(oldValue, newValue)
+        }
+
+        return (extraObs, triggerObs, pinObs)
     }
 }
 

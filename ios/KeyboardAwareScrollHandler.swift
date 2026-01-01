@@ -30,6 +30,25 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
     private var userIsInteracting: Bool = false
     private var stickToPinned: Bool = false
 
+    /// Clears any active/armed pin-to-top state (runway + pinned offset).
+    /// Useful when pin-to-top is disabled at runtime.
+    func clearPinState(preserveScrollPosition: Bool = true) {
+        pendingPin = false
+        pendingPinReady = false
+        pendingPinContentHeightAfter = 0
+        pendingPinMessageStartY = 0
+
+        isPinned = false
+        runwayInset = 0
+        pinnedOffset = 0
+
+        isPinAnimating = false
+        stickToPinned = false
+
+        updateContentInset(preserveScrollPosition: preserveScrollPosition)
+        recheckScrollPosition()
+    }
+
     private func ensurePinnedOffset(reason: String) {
         guard let sv = scrollView else { return }
         guard isPinned || runwayInset > 0 else { return }

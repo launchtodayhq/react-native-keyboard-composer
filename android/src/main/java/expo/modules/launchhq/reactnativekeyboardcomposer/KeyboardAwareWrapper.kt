@@ -26,6 +26,8 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
         private const val COMPOSER_KEYBOARD_GAP_DP = 8
         private const val BUTTON_SIZE_DP = 42  // 32 * 1.3 = ~42
         private const val BUTTON_GAP_DP = 24   // Gap between button and input
+        private const val DEBUG_LOGS = true
+        private const val TAG = "KeyboardComposerNative"
     }
     
     // Track actual composer height (measured from view, not prop)
@@ -38,6 +40,9 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
             _pinToTopEnabled = value
             if (!value) {
                 clearPinnedState()
+                // If pin-to-top is disabled while the IME animation left a translation,
+                // reset it so content doesn't appear "dragged".
+                scrollView?.getChildAt(0)?.translationY = 0f
                 updateScrollPadding()
                 post { checkAndUpdateScrollPosition() }
             }
@@ -143,16 +148,11 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
 
     override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
         super.onLayout(changed, left, top, right, bottom)
-        
         val width = right - left
         val height = bottom - top
-        val buttonView = scrollToBottomButtonController.getButtonView()
-        
-        for (i in 0 until childCount) {
-            val child = getChildAt(i)
-            if (child !== buttonView) {
-                child.layout(0, 0, width, height)
-            }
+
+        if (DEBUG_LOGS) {
+            android.util.Log.w(TAG, "Wrapper onLayout changed=$changed size=${width}x$height childCount=$childCount")
         }
 
         scrollToBottomButtonController.layout(width, height)
@@ -188,6 +188,10 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
         
         val sv = findScrollView(this)
         val composer = findComposerView(this)
+
+        if (DEBUG_LOGS) {
+            android.util.Log.w(TAG, "findAndAttachViews sv=${sv?.javaClass?.simpleName} composer=${composer?.javaClass?.simpleName}")
+        }
         
         if (sv != null) {
             scrollView = sv
@@ -228,6 +232,14 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
             updateSafeAreaBottomFromRootInsets()
             applyComposerTranslation()
             updateScrollButtonPosition()
+
+            if (DEBUG_LOGS) {
+                val content = sv.getChildAt(0)
+                android.util.Log.w(
+                    TAG,
+                    "attached svSize=${sv.width}x${sv.height} scrollY=${sv.scrollY} contentH=${content?.height} composerH=${composer?.height} composerContainer=${composerContainer?.javaClass?.simpleName}"
+                )
+            }
         } else {
             // Try again on the next layout pass (avoid timed delays)
             viewTreeObserver.addOnGlobalLayoutListener(object : ViewTreeObserver.OnGlobalLayoutListener {

@@ -237,7 +237,7 @@ function ChatScreen() {
       {/* KeyboardAwareWrapper manages both scroll content AND composer animation */}
       <KeyboardAwareWrapper
         style={styles.chatArea}
-        pinToTopEnabled={true}
+        pinToTopEnabled={false}
         extraBottomInset={baseBottomInset}
       >
         {/* ScrollView with messages */}
@@ -270,13 +270,13 @@ function ChatScreen() {
               ]}
             >
               <KeyboardComposer
-                placeholder="Type a message..."
+                style={{ flex: 1 }}
+                placeholder="Ask anything"
                 onSend={handleSend}
                 onHeightChange={handleHeightChange}
                 minHeight={constants.defaultMinHeight}
                 maxHeight={constants.defaultMaxHeight}
                 sendButtonEnabled={true}
-                style={{ flex: 1 }}
               />
             </View>
           </View>

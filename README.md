@@ -154,15 +154,31 @@ The main composer input component.
 
 Wrapper component that handles keyboard-aware scrolling.
 
-| Prop                 | Type                   | Default | Description                               |
-| -------------------- | ---------------------- | ------- | ----------------------------------------- |
-| `pinToTopEnabled`    | `boolean`              | `false` | Enables ChatGPT-style pin-to-top runway   |
-| `extraBottomInset`   | `number`               | `0`     | Bottom inset (typically composer height)  |
-| `scrollToTopTrigger` | `number`               | `0`     | Change value to scroll new content to top |
-| `style`              | `StyleProp<ViewStyle>` | -       | Container style                           |
-| `children`           | `ReactNode`            | -       | Should contain a ScrollView               |
+| Prop                 | Type                   | Default | Description                                          |
+| -------------------- | ---------------------- | ------- | ---------------------------------------------------- |
+| `pinToTopEnabled`    | `boolean`              | `false` | Enables pin-to-top + runway behavior (see below)     |
+| `extraBottomInset`   | `number`               | `0`     | Bottom inset (typically the current composer height) |
+| `scrollToTopTrigger` | `number`               | `0`     | Change value to arm pin-to-top for the next append   |
+| `style`              | `StyleProp<ViewStyle>` | -       | Container style                                      |
+| `children`           | `ReactNode`            | -       | Should contain a ScrollView                          |
 
-When `pinToTopEnabled` is `true`, sending a message pins that message to the top and creates a non-scrollable “runway” below it for streamed AI responses (iOS + Android).
+#### Pin-to-top behavior (optional)
+
+Pin-to-top is **opt-in** and is controlled via `KeyboardAwareWrapper` (not `KeyboardComposer`).
+
+When `pinToTopEnabled` is `true`:
+
+- The next user message append is **pinned to the top** of the viewport.
+- A non-scrollable **runway** is created below it so streamed assistant responses can grow without the content snapping around.
+- While streaming grows content, the wrapper keeps the pinned position stable unless the user manually scrolls away.
+
+When `pinToTopEnabled` is `false` (or omitted), the wrapper behaves like a normal keyboard-aware chat wrapper (no runway/pinning).
+
+You can toggle `pinToTopEnabled` at runtime; disabling it clears any active runway/pin state.
+
+#### `scrollToTopTrigger`
+
+Despite the name, `scrollToTopTrigger` is used to **arm pin-to-top for the next content append** (use a counter or `Date.now()`).
 
 ### `constants`
 

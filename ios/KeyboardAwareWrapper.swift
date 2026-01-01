@@ -31,6 +31,7 @@ class KeyboardAwareWrapper: ExpoView, KeyboardAwareScrollHandlerDelegate {
     // KVO observations
     private var extraBottomInsetObservation: NSKeyValueObservation?
     private var scrollToTopTriggerObservation: NSKeyValueObservation?
+    private var pinToTopEnabledObservation: NSKeyValueObservation?
     
     // Base inset: composer height only (from JS)
     // Gap and safe area are handled natively
@@ -63,6 +64,7 @@ class KeyboardAwareWrapper: ExpoView, KeyboardAwareScrollHandlerDelegate {
         NotificationCenter.default.removeObserver(self)
         extraBottomInsetObservation?.invalidate()
         scrollToTopTriggerObservation?.invalidate()
+        pinToTopEnabledObservation?.invalidate()
     }
     
     // MARK: - Property Observers (KVO)
@@ -71,7 +73,7 @@ class KeyboardAwareWrapper: ExpoView, KeyboardAwareScrollHandlerDelegate {
     /// This is necessary because React Native/Expo sets props via Objective-C KVC,
     /// which bypasses Swift's didSet observers.
     private func setupPropertyObservers() {
-        let (extraObs, triggerObs) = WrapperPropertyObservers.setup(
+        let (extraObs, triggerObs, pinObs) = WrapperPropertyObservers.setup(
             wrapper: self,
             onExtraBottomInsetChange: { [weak self] oldValue, newValue in
                 guard let self else { return }
@@ -88,11 +90,18 @@ class KeyboardAwareWrapper: ExpoView, KeyboardAwareScrollHandlerDelegate {
                 guard let self else { return }
                 guard self.pinToTopEnabled else { return }
                 self.keyboardHandler.requestPinForNextContentAppend()
+            },
+            onPinToTopEnabledChange: { [weak self] _, newValue in
+                guard let self else { return }
+                if newValue == false {
+                    self.keyboardHandler.clearPinState(preserveScrollPosition: true)
+                }
             }
         )
 
         extraBottomInsetObservation = extraObs
         scrollToTopTriggerObservation = triggerObs
+        pinToTopEnabledObservation = pinObs
     }
 
     @objc private func handleComposerDidSend(_ notification: Notification) {

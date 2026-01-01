@@ -24,6 +24,11 @@ internal class ImeKeyboardAnimationController(
     private val postToUi: (Runnable) -> Unit,
     private val checkAndUpdateScrollPosition: () -> Unit
 ) {
+    companion object {
+        private const val DEBUG_LOGS = true
+        private const val TAG = "KeyboardComposerNative"
+    }
+
     private var wasAtBottom: Boolean = false
     private var baseScrollY: Int = 0
     private var isOpening: Boolean = false
@@ -40,11 +45,16 @@ internal class ImeKeyboardAnimationController(
                     val currentKeyboardHeight = getCurrentKeyboardHeight()
                     if (currentKeyboardHeight == 0) {
                         isOpening = true
-                        wasAtBottom = !isPinned() && isNearBottom(scrollView)
+                        val maxScroll = getMaxScroll(scrollView)
+                        // Only treat as "at bottom" if the content is actually scrollable.
+                        // If maxScroll == 0 (short content), translating the content with the IME
+                        // creates the "dragged/pulled" effect as the keyboard closes/opens.
+                        wasAtBottom = !isPinned() && maxScroll > 0 && isNearBottom(scrollView)
                         baseScrollY = scrollView.scrollY
                     } else {
                         isOpening = false
-                        wasAtBottom = !isPinned() && isNearBottom(scrollView)
+                        val maxScroll = getMaxScroll(scrollView)
+                        wasAtBottom = !isPinned() && maxScroll > 0 && isNearBottom(scrollView)
                         closingStartTranslation = scrollView.getChildAt(0)?.translationY?.toInt() ?: 0
                         maxKeyboardHeight = currentKeyboardHeight
                         if (wasAtBottom) {
@@ -57,6 +67,14 @@ internal class ImeKeyboardAnimationController(
                     // translate/drag the content. We'll pin after the keyboard closes.
                     if (!isOpening && isPinPendingOrDeferred()) {
                         wasAtBottom = false
+                    }
+
+                    if (DEBUG_LOGS) {
+                        val childH = scrollView.getChildAt(0)?.height ?: -1
+                        android.util.Log.w(
+                            TAG,
+                            "IME onPrepare opening=$isOpening keyboardH=$currentKeyboardHeight wasAtBottom=$wasAtBottom scrollY=${scrollView.scrollY} maxScroll=${getMaxScroll(scrollView)} childH=$childH svH=${scrollView.height}"
+                        )
                     }
                 }
 
