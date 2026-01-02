@@ -66,10 +66,6 @@ public class KeyboardComposerModule: Module {
         view.pinToTopEnabled = value
       }
 
-      Prop("pinToTopRevealEnabled") { (view: KeyboardAwareWrapper, value: Bool) in
-        view.pinToTopRevealEnabled = value
-      }
-
       Prop("extraBottomInset") { (view: KeyboardAwareWrapper, value: CGFloat) in
         view.extraBottomInset = value
       }

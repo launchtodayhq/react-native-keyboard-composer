@@ -30,46 +30,24 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
     private var userIsInteracting: Bool = false
     private var stickToPinned: Bool = false
 
-    // Optional native reveal animation for the newly pinned message.
-    var pinToTopRevealEnabled: Bool = false
+    // NOTE: We intentionally avoid trying to animate individual message views here.
+    // With a generic UIScrollView containing React Native-managed subviews, reliably finding
+    // "the new message row" is brittle and can cause glitches (including full-content flashes).
 
-    private func findPinnedMessageContainerView(contentY: CGFloat) -> UIView? {
-        guard let sv = scrollView else { return nil }
-        // React Native puts content inside an internal content view.
-        // Scroll indicators are small; the content view is typically the largest subview.
-        let contentView: UIView = sv.subviews.max(by: {
-            ($0.bounds.width * $0.bounds.height) < ($1.bounds.width * $1.bounds.height)
-        }) ?? sv
-
-        let point = CGPoint(x: contentView.bounds.midX, y: contentY + 1)
-        if let hit = contentView.hitTest(point, with: nil as UIEvent?) {
-            // Walk up to a stable container (direct child of the RN content view) so we don't animate just a Text node.
-            var candidate: UIView? = hit
-            while let c = candidate, c.superview != contentView, c.superview != nil {
-                candidate = c.superview
+    private func findScrollContentContainerView(in sv: UIScrollView) -> UIView? {
+        // RN ScrollView typically has a single content container that matches contentSize.
+        if sv.contentSize.height > 0 {
+            if let match = sv.subviews.first(where: { v in
+                abs(v.frame.height - sv.contentSize.height) < 2 &&
+                v.frame.width >= sv.bounds.width - 2
+            }) {
+                return match
             }
-            return candidate ?? hit
         }
-
-        // Fallback: first child whose frame contains the Y.
-        return contentView.subviews.first(where: { $0.frame.minY <= contentY && $0.frame.maxY >= contentY })
-    }
-
-    private func animatePinnedMessageReveal(contentY: CGFloat) {
-        guard pinToTopRevealEnabled else { return }
-        guard userIsInteracting == false else { return }
-        guard let target = findPinnedMessageContainerView(contentY: contentY) else { return }
-
-        // Subtle: fade + slide up a few points.
-        let startTransform = CGAffineTransform(translationX: 0, y: 10)
-        target.alpha = 0
-        target.transform = startTransform
-
-        let animator = UIViewPropertyAnimator(duration: 0.22, curve: .easeOut) {
-            target.alpha = 1
-            target.transform = .identity
-        }
-        animator.startAnimation()
+        // Fallback: largest subview (scroll indicators are small).
+        return sv.subviews.max(by: {
+            ($0.bounds.width * $0.bounds.height) < ($1.bounds.width * $1.bounds.height)
+        })
     }
 
     /// Clears any active/armed pin-to-top state (runway + pinned offset).
@@ -473,6 +451,8 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
 
     private func applyPinAfterSend(contentHeightAfter: CGFloat) {
         guard let sv = scrollView else { return }
+        // If a pin animation is already running, don't start another.
+        guard !isPinAnimating else { return }
 
         let viewportH = sv.bounds.height
         guard viewportH > 0 else { return }
@@ -490,7 +470,6 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
         // Increased to avoid being too close to the header/nav bar.
         let topPadding: CGFloat = 16
         let desiredPinnedOffset = max(0, pendingPinMessageStartY - topPadding)
-        let revealMessageStartY = pendingPinMessageStartY
 
         // Current max offset with base inset only (UNCLAMPED so we don't lose the deficit when content < viewport).
         let rawMaxOffset = contentHeightAfter - viewportH + baseInset
@@ -505,12 +484,12 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
         runwayInset = neededRunway
         // updateContentInset will also reconcile runway for current baseInset
         updateContentInset(preserveScrollPosition: true)
+        let targetOffset = CGPoint(x: 0, y: desiredPinnedOffset)
 
         // Smooth pin animation (configurable feel)
         let pinDelay: TimeInterval = 0
         // Slightly longer so the deceleration is perceptible near the top
-        let pinDuration: TimeInterval = 0.28
-        let targetOffset = CGPoint(x: 0, y: desiredPinnedOffset)
+        let pinDuration: TimeInterval = 0.38
 
         // Mark pin animation in-flight so content growth won't preserve an intermediate offset.
         isPinAnimating = true
@@ -523,9 +502,23 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
             controlPoint1: CGPoint(x: 0.10, y: 0.90),
             controlPoint2: CGPoint(x: 0.20, y: 1.00)
         )
+
+        // Deterministic "reveal" feel (applies even when targetOffset == currentOffset, e.g. first message).
+        // We animate the scroll content container subtly, not an individual message row.
+        let container = (!userIsInteracting ? findScrollContentContainerView(in: sv) : nil)
+        let originalAlpha = container?.alpha ?? 1
+        let originalTransform = container?.transform ?? .identity
+        if let container {
+            // Never go to 0 alpha (avoids black flashes).
+            container.alpha = min(container.alpha, 0.92)
+            container.transform = container.transform.concatenating(CGAffineTransform(translationX: 0, y: 8))
+        }
+
         let animator = UIViewPropertyAnimator(duration: pinDuration, timingParameters: timing)
         animator.addAnimations {
             sv.contentOffset = targetOffset
+            container?.alpha = originalAlpha
+            container?.transform = originalTransform
         }
         animator.addCompletion { [weak self, weak sv] _ in
             guard let self, let sv else { return }
@@ -534,8 +527,11 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
             sv.setContentOffset(targetOffset, animated: false)
             // Start enforcing pinned offset only after the animation completes (for streaming).
             self.stickToPinned = true
-            // Optional reveal for the newly pinned message (native-only).
-            self.animatePinnedMessageReveal(contentY: revealMessageStartY)
+            // Safety restore if interrupted.
+            if let container {
+                container.alpha = originalAlpha
+                container.transform = originalTransform
+            }
         }
         animator.startAnimation(afterDelay: pinDelay)
 

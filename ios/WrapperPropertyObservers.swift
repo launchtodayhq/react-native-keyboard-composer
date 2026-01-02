@@ -7,8 +7,7 @@ enum WrapperPropertyObservers {
         onExtraBottomInsetChange: @escaping (_ oldValue: CGFloat, _ newValue: CGFloat) -> Void,
         onScrollToTopTrigger: @escaping () -> Void,
         onPinToTopEnabledChange: @escaping (_ oldValue: Bool, _ newValue: Bool) -> Void,
-        onPinToTopRevealEnabledChange: @escaping (_ oldValue: Bool, _ newValue: Bool) -> Void
-    ) -> (NSKeyValueObservation, NSKeyValueObservation, NSKeyValueObservation, NSKeyValueObservation) {
+    ) -> (NSKeyValueObservation, NSKeyValueObservation, NSKeyValueObservation) {
         let extraObs = wrapper.observe(\.extraBottomInset, options: [.old, .new]) { _, change in
             guard let oldValue = change.oldValue,
                   let newValue = change.newValue,
@@ -28,14 +27,7 @@ enum WrapperPropertyObservers {
             onPinToTopEnabledChange(oldValue, newValue)
         }
 
-        let revealObs = wrapper.observe(\.pinToTopRevealEnabled, options: [.old, .new]) { _, change in
-            guard let oldValue = change.oldValue,
-                  let newValue = change.newValue,
-                  oldValue != newValue else { return }
-            onPinToTopRevealEnabledChange(oldValue, newValue)
-        }
-
-        return (extraObs, triggerObs, pinObs, revealObs)
+        return (extraObs, triggerObs, pinObs)
     }
 }
 

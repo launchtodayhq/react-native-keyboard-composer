@@ -48,10 +48,6 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
             }
         }
 
-    // Optional native-only reveal animation for the newly pinned message.
-    // iOS implements this; Android currently ignores it (kept for cross-platform prop compatibility).
-    var pinToTopRevealEnabled: Boolean = false
-
     private var _extraBottomInset: Float = 64f
     var extraBottomInset: Float
         get() = _extraBottomInset

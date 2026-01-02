@@ -237,9 +237,7 @@ function ChatScreen() {
       {/* KeyboardAwareWrapper manages both scroll content AND composer animation */}
       <KeyboardAwareWrapper
         style={styles.chatArea}
-        pinToTopEnabled={false}
-        // iOS: optional native-only reveal animation for the pinned message (fade + slight slide)
-        pinToTopRevealEnabled={true}
+        pinToTopEnabled={true}
         extraBottomInset={baseBottomInset}
       >
         {/* ScrollView with messages */}
