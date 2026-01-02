@@ -12,6 +12,11 @@ export interface KeyboardAwareWrapperProps {
    */
   pinToTopEnabled?: boolean;
   /**
+   * iOS/Android: Optional native-only "reveal" animation for the newly pinned message (fade + slight slide).
+   * If omitted, native defaults apply.
+   */
+  pinToTopRevealEnabled?: boolean;
+  /**
    * Extra bottom inset (composer height + gap).
    * Keyboard height is automatically handled by native code.
    */
@@ -29,6 +34,7 @@ export interface KeyboardAwareWrapperProps {
 type NativeKeyboardAwareWrapperProps = {
   style?: StyleProp<ViewStyle>;
   pinToTopEnabled?: boolean;
+  pinToTopRevealEnabled?: boolean;
   extraBottomInset?: number;
   scrollToTopTrigger?: number;
   children?: ReactNode;
@@ -59,6 +65,7 @@ export function KeyboardAwareWrapper({
   children,
   style,
   pinToTopEnabled,
+  pinToTopRevealEnabled,
   extraBottomInset = 0,
   scrollToTopTrigger = 0,
 }: KeyboardAwareWrapperProps) {
@@ -66,6 +73,9 @@ export function KeyboardAwareWrapper({
     <NativeView
       style={style}
       {...(pinToTopEnabled === undefined ? {} : { pinToTopEnabled })}
+      {...(pinToTopRevealEnabled === undefined
+        ? {}
+        : { pinToTopRevealEnabled })}
       extraBottomInset={extraBottomInset}
       scrollToTopTrigger={scrollToTopTrigger}
     >

@@ -32,11 +32,14 @@ class KeyboardAwareWrapper: ExpoView, KeyboardAwareScrollHandlerDelegate {
     private var extraBottomInsetObservation: NSKeyValueObservation?
     private var scrollToTopTriggerObservation: NSKeyValueObservation?
     private var pinToTopEnabledObservation: NSKeyValueObservation?
+    private var pinToTopRevealEnabledObservation: NSKeyValueObservation?
     
     // Base inset: composer height only (from JS)
     // Gap and safe area are handled natively
     // Using @objc dynamic to enable KVO - required because React Native/Expo sets props via Objective-C KVC
     @objc dynamic var pinToTopEnabled: Bool = false
+    /// Optional: native-only reveal animation (fade + slight slide) when a message is pinned to the top.
+    @objc dynamic var pinToTopRevealEnabled: Bool = false
     @objc dynamic var extraBottomInset: CGFloat = 48
     
     /// Trigger scroll to top when this value changes (use timestamp/counter from JS)
@@ -65,6 +68,7 @@ class KeyboardAwareWrapper: ExpoView, KeyboardAwareScrollHandlerDelegate {
         extraBottomInsetObservation?.invalidate()
         scrollToTopTriggerObservation?.invalidate()
         pinToTopEnabledObservation?.invalidate()
+        pinToTopRevealEnabledObservation?.invalidate()
     }
     
     // MARK: - Property Observers (KVO)
@@ -73,7 +77,7 @@ class KeyboardAwareWrapper: ExpoView, KeyboardAwareScrollHandlerDelegate {
     /// This is necessary because React Native/Expo sets props via Objective-C KVC,
     /// which bypasses Swift's didSet observers.
     private func setupPropertyObservers() {
-        let (extraObs, triggerObs, pinObs) = WrapperPropertyObservers.setup(
+        let (extraObs, triggerObs, pinObs, revealObs) = WrapperPropertyObservers.setup(
             wrapper: self,
             onExtraBottomInsetChange: { [weak self] oldValue, newValue in
                 guard let self else { return }
@@ -96,12 +100,17 @@ class KeyboardAwareWrapper: ExpoView, KeyboardAwareScrollHandlerDelegate {
                 if newValue == false {
                     self.keyboardHandler.clearPinState(preserveScrollPosition: true)
                 }
+            },
+            onPinToTopRevealEnabledChange: { [weak self] _, newValue in
+                guard let self else { return }
+                self.keyboardHandler.pinToTopRevealEnabled = newValue
             }
         )
 
         extraBottomInsetObservation = extraObs
         scrollToTopTriggerObservation = triggerObs
         pinToTopEnabledObservation = pinObs
+        pinToTopRevealEnabledObservation = revealObs
     }
 
     @objc private func handleComposerDidSend(_ notification: Notification) {
