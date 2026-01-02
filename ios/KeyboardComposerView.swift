@@ -91,8 +91,9 @@ class KeyboardComposerView: ExpoView {
     backgroundColor = .clear
     clipsToBounds = false
 
-    // Container - transparent background (glass effect handled by JS)
-    containerView.backgroundColor = .clear
+    // Container background is handled natively so consumers don't have to wrap in an extra view.
+    // Light mode: #F2F2F2
+    containerView.backgroundColor = UIColor(red: 242.0/255.0, green: 242.0/255.0, blue: 242.0/255.0, alpha: 1.0)
     containerView.layer.cornerRadius = 0
     containerView.clipsToBounds = false
 

@@ -34,6 +34,8 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
     // With a generic UIScrollView containing React Native-managed subviews, reliably finding
     // "the new message row" is brittle and can cause glitches (including full-content flashes).
 
+    private static let pinDebugLogsEnabled = true
+
     private func findScrollContentContainerView(in sv: UIScrollView) -> UIView? {
         // RN ScrollView typically has a single content container that matches contentSize.
         if sv.contentSize.height > 0 {
@@ -88,7 +90,8 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
         let contentH = sv.contentSize.height
         // Use the *unclamped* maxOffset so we can compute runway correctly even when
         // content is shorter than the viewport (rawMaxOffset is negative).
-        // maxOffset = max(0, rawMaxOffset + runwayInset). We want maxOffset == pinnedOffset.
+        // Keep runway non-scrollable by making the scroll view's max offset land on `pinnedOffset`.
+        // maxOffset = rawMaxOffset + runwayInset. We want maxOffset == pinnedOffset.
         // => runwayInset = pinnedOffset - rawMaxOffset
         let rawMaxOffset = contentH - viewportH + baseInset
         runwayInset = max(0, pinnedOffset - rawMaxOffset)
@@ -444,6 +447,13 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
 
         // For bottom-appended lists: the new message starts where content ends right now.
         pendingPinMessageStartY = sv.contentSize.height
+        if Self.pinDebugLogsEnabled {
+            print(
+                "[KeyboardComposer][pin] requestPinForNextContentAppend " +
+                "contentSizeH=\(sv.contentSize.height) boundsH=\(sv.bounds.height) " +
+                "contentOffsetY=\(sv.contentOffset.y) contentInsetTop=\(sv.contentInset.top) adjustedTop=\(sv.adjustedContentInset.top)"
+            )
+        }
         updateContentInset(preserveScrollPosition: true)
     }
 
@@ -466,18 +476,48 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
             baseInset = baseBottomInset + safeAreaBottom
         }
 
-        // Pin so the new message appears at the top of the viewport (small padding for feel)
-        // Increased to avoid being too close to the header/nav bar.
+        // Pin so the new message appears at the top of the viewport.
+        //
+        // IMPORTANT:
+        // - `adjustedContentInset.top` affects the *coordinate system* (min contentOffset is -adjustedInset.top).
+        // - `topPadding` should be a small *visual gap*, not the inset itself.
+        //
+        // If we use `contentInset.top` as the "padding", we can end up pinning too high and allow a large
+        // scrollable blank area above the pinned message.
         let topPadding: CGFloat = 16
-        let desiredPinnedOffset = max(0, pendingPinMessageStartY - topPadding)
+        let topInset: CGFloat = sv.adjustedContentInset.top
+        let minOffsetY: CGFloat = -topInset
+
+        // pendingPinMessageStartY is expressed in content coordinates (y inside the scroll content).
+        // Convert into scroll offset space by subtracting the top inset that defines the coordinate system.
+        let desiredPinnedOffset = pendingPinMessageStartY - topPadding - topInset
+
+        if Self.pinDebugLogsEnabled {
+            print(
+                "[KeyboardComposer][pin] applyPinAfterSend " +
+                "pendingStartY=\(pendingPinMessageStartY) topPadding=\(topPadding) topInset=\(topInset) " +
+                "minOffsetY=\(minOffsetY) desiredPinnedOffset=\(desiredPinnedOffset) " +
+                "contentOffsetY=\(sv.contentOffset.y) boundsH=\(sv.bounds.height) " +
+                "contentSizeAfter=\(contentHeightAfter) baseInset=\(baseInset) runwayBefore=\(runwayInset) pinnedBefore=\(pinnedOffset)"
+            )
+        }
 
         // Current max offset with base inset only (UNCLAMPED so we don't lose the deficit when content < viewport).
+        // This max offset is in normalized space (>= 0).
         let rawMaxOffset = contentHeightAfter - viewportH + baseInset
 
-        // Runway is "just enough" extra inset to make maxOffset == desiredPinnedOffset
-        // maxOffset = max(0, rawMaxOffset + runwayInset). We want maxOffset == desiredPinnedOffset.
+        // Runway is "just enough" extra inset to make maxOffset land on the pinned offset:
+        // maxOffset = rawMaxOffset + runwayInset. We want maxOffset == desiredPinnedOffset.
         // => runwayInset = desiredPinnedOffset - rawMaxOffset
         let neededRunway = max(0, desiredPinnedOffset - rawMaxOffset)
+
+        if Self.pinDebugLogsEnabled {
+            print(
+                "[KeyboardComposer][pin] runway " +
+                "rawMaxOffset=\(rawMaxOffset) neededRunway=\(neededRunway) " +
+                "keyboardH=\(keyboardHeight) safeAreaBottom=\(safeAreaBottom) baseBottomInset=\(baseBottomInset)"
+            )
+        }
 
         isPinned = true
         pinnedOffset = desiredPinnedOffset

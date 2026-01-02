@@ -69,6 +69,11 @@ public class KeyboardComposerModule: Module {
       Prop("extraBottomInset") { (view: KeyboardAwareWrapper, value: CGFloat) in
         view.extraBottomInset = value
       }
+
+      // No-op on iOS (kept for cross-platform API parity; iOS handles headers via ScrollView contentInset).
+      Prop("extraTopInset") { (_: KeyboardAwareWrapper, _: CGFloat) in
+        // Intentionally unused
+      }
       
       Prop("scrollToTopTrigger") { (view: KeyboardAwareWrapper, value: Double) in
         view.scrollToTopTrigger = value

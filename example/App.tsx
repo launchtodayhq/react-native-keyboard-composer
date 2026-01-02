@@ -38,6 +38,8 @@ function ChatScreen() {
 
   const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES);
   const [isStreaming, setIsStreaming] = useState(false);
+  const [headerHeight, setHeaderHeight] = useState(0);
+  const [hasMeasuredHeader, setHasMeasuredHeader] = useState(false);
   const streamTimeoutsRef = useRef<Array<ReturnType<typeof setTimeout>>>([]);
   const streamCancelledRef = useRef(false);
   const [composerHeight, setComposerHeight] = useState(
@@ -241,7 +243,18 @@ function ChatScreen() {
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
 
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+      <View
+        style={[
+          styles.header,
+          { paddingTop: insets.top + 8, backgroundColor: colors.background },
+        ]}
+        onLayout={(e) => {
+          const h = e.nativeEvent.layout.height;
+          setHeaderHeight(h);
+          if (h > 0 && !hasMeasuredHeader) setHasMeasuredHeader(true);
+        }}
+        pointerEvents="none"
+      >
         <Text
           style={[
             styles.headerTitle,
@@ -265,10 +278,19 @@ function ChatScreen() {
         style={styles.chatArea}
         pinToTopEnabled={true}
         extraBottomInset={baseBottomInset}
+        // Feed the measured overlay header height into native.
+        // Android needs this to keep pinned content from sitting under the absolute header.
+        // iOS can ignore this (it already uses ScrollView contentInset in this example).
+        extraTopInset={headerHeight}
       >
         {/* ScrollView with messages */}
         <ScrollView
+          key={hasMeasuredHeader ? "measured-header" : "unmeasured-header"}
           style={styles.scrollView}
+          contentInsetAdjustmentBehavior="never"
+          contentInset={{ top: headerHeight }}
+          contentOffset={{ x: 0, y: -headerHeight }}
+          scrollIndicatorInsets={{ top: headerHeight }}
           contentContainerStyle={[
             styles.messageList,
             isLargeScreen && styles.messageListCentered,
@@ -327,6 +349,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
     paddingHorizontal: 16,
     paddingBottom: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
@@ -382,7 +409,7 @@ const styles = StyleSheet.create({
   },
   messageActions: {
     flexDirection: "row",
-    gap: 8,
+    gap: 4,
     marginTop: 8,
   },
   actionButton: {
@@ -394,6 +421,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
+    justifyContent: "flex-end",
   },
   composerInner: {
     paddingHorizontal: 16,

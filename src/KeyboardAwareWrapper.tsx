@@ -17,6 +17,11 @@ export interface KeyboardAwareWrapperProps {
    */
   extraBottomInset?: number;
   /**
+   * Extra top inset for overlay/transparent headers (Android needs this; iOS can use contentInset).
+   * Provide your header height in dp/points.
+   */
+  extraTopInset?: number;
+  /**
    * Trigger scroll to bottom when this value changes.
    * Use Date.now() or a counter to trigger.
    */
@@ -30,6 +35,7 @@ type NativeKeyboardAwareWrapperProps = {
   style?: StyleProp<ViewStyle>;
   pinToTopEnabled?: boolean;
   extraBottomInset?: number;
+  extraTopInset?: number;
   scrollToTopTrigger?: number;
   children?: ReactNode;
 };
@@ -60,6 +66,7 @@ export function KeyboardAwareWrapper({
   style,
   pinToTopEnabled,
   extraBottomInset = 0,
+  extraTopInset = 0,
   scrollToTopTrigger = 0,
 }: KeyboardAwareWrapperProps) {
   return (
@@ -67,6 +74,7 @@ export function KeyboardAwareWrapper({
       style={style}
       {...(pinToTopEnabled === undefined ? {} : { pinToTopEnabled })}
       extraBottomInset={extraBottomInset}
+      extraTopInset={extraTopInset}
       scrollToTopTrigger={scrollToTopTrigger}
     >
       {children}
