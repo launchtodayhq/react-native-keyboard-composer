@@ -12,6 +12,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import expo.modules.kotlin.AppContext
 import expo.modules.kotlin.views.ExpoView
+import kotlin.math.abs
 
 /**
  * Keyboard-aware wrapper for Android.
@@ -24,7 +25,7 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
     companion object {
         private const val CONTENT_GAP_DP = 24
         private const val COMPOSER_KEYBOARD_GAP_DP = 8
-        private const val BUTTON_SIZE_DP = 42  // 32 * 1.3 = ~42
+        private const val BUTTON_SIZE_DP = 32
         private const val BUTTON_GAP_DP = 24   // Gap between button and input
         private const val DEBUG_LOGS = true
         private const val TAG = "KeyboardComposerNative"
@@ -98,6 +99,7 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
         )
     }
     private var isAtBottom = true
+    private var suppressScrollButtonVisibility = false
 
     // Pin-to-top + runway state (Android uses paddingBottom as the "inset")
     private var isPinned = false
@@ -471,6 +473,15 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
     
     private fun checkAndUpdateScrollPosition() {
         val sv = scrollView ?: return
+
+        // During pin-to-top flow (send -> IME closing -> runway/pin -> smooth scroll),
+        // scrollY/maxScroll can transiently make us appear "not at bottom". Never show
+        // the scroll-to-bottom button during this stabilization window.
+        if (suppressScrollButtonVisibility || pendingPin || pendingPinReady) {
+            hideScrollButton()
+            isAtBottom = true
+            return
+        }
         
         val child = sv.getChildAt(0) ?: return
         val contentExceedsViewport = child.height > sv.height
@@ -563,7 +574,43 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
         pinnedScrollY = result.pinnedScrollY
         runwayInsetPx = result.runwayInsetPx
         updateScrollPadding()
+
+        // Prevent scroll-to-bottom button flicker while we smooth-scroll into the pinned position.
+        suppressScrollButtonVisibility = true
+        hideScrollButton()
+        isAtBottom = true
+
         sv.smoothScrollTo(0, pinnedScrollY)
+        suppressScrollButtonUntilPinned()
+    }
+
+    private fun suppressScrollButtonUntilPinned() {
+        val sv = scrollView ?: return
+        val targetY = pinnedScrollY
+        var frames = 0
+        val maxFrames = 90
+        val thresholdPx = dpToPx(4)
+
+        fun tick() {
+            if (!ViewCompat.isAttachedToWindow(sv)) {
+                suppressScrollButtonVisibility = false
+                return
+            }
+
+            frames++
+            val delta = abs(sv.scrollY - targetY)
+            val settled = delta <= thresholdPx
+
+            if (settled || frames >= maxFrames) {
+                suppressScrollButtonVisibility = false
+                post { checkAndUpdateScrollPosition() }
+                return
+            }
+
+            ViewCompat.postOnAnimation(sv) { tick() }
+        }
+
+        ViewCompat.postOnAnimation(sv) { tick() }
     }
 
     private fun recomputeRunwayInset(basePaddingBottom: Int) {
