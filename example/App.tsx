@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import {
   View,
   Text,
@@ -37,6 +37,9 @@ function ChatScreen() {
   const { isTablet, isDesktop, width, scaleFont } = useResponsive();
 
   const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES);
+  const [isStreaming, setIsStreaming] = useState(false);
+  const streamTimeoutsRef = useRef<Array<ReturnType<typeof setTimeout>>>([]);
+  const streamCancelledRef = useRef(false);
   const [composerHeight, setComposerHeight] = useState(
     constants.defaultMinHeight
   );
@@ -61,59 +64,82 @@ function ChatScreen() {
 
   const noop = useCallback(() => {}, []);
 
-  const handleSend = useCallback((text: string) => {
-    if (!text.trim()) return;
-
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      text: text.trim(),
-      role: "user",
-      timestamp: Date.now(),
-    };
-
-    setMessages((prev) => [...prev, userMessage]);
-
-    // Simulate streaming assistant response
-    const responses = [
-      "That's interesting! Tell me more about what you're building. I'd love to hear more details about your project and how the keyboard handling fits into your app's UX.",
-      "I see what you mean. Good keyboard handling really does make a difference in chat UX. The native feel of smooth animations and proper content insets creates a much more polished experience.",
-      "Great observation! Notice how the content adjusts as you type. This library handles all the edge cases: keyboard show/hide, input growing, maintaining scroll position, and more.",
-      "Thanks for trying out the keyboard composer! This demonstrates ChatGPT-style pin-to-top behavior where new messages appear at the top with room for the response to stream in below.",
-    ];
-    // Use the last (long) response for testing, or random for variety
-    const fullResponse = responses[responses.length - 1]; // Always use long response for testing
-    // const fullResponse = responses[Math.floor(Math.random() * responses.length)];
-    const assistantId = (Date.now() + 1).toString();
-
-    // Add empty assistant message first (like typing indicator)
-    setTimeout(() => {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: assistantId,
-          text: "",
-          role: "assistant",
-          timestamp: Date.now(),
-        },
-      ]);
-    }, 500);
-
-    // Stream the response word by word
-    const words = fullResponse.split(" ");
-    let currentText = "";
-
-    words.forEach((word, index) => {
-      setTimeout(() => {
-        currentText += (index === 0 ? "" : " ") + word;
-        const streamedText = currentText;
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg.id === assistantId ? { ...msg, text: streamedText } : msg
-          )
-        );
-      }, 600 + index * 50); // 50ms per word
-    });
+  const handleStop = useCallback(() => {
+    streamCancelledRef.current = true;
+    for (const id of streamTimeoutsRef.current) clearTimeout(id);
+    streamTimeoutsRef.current = [];
+    setIsStreaming(false);
   }, []);
+
+  const handleSend = useCallback(
+    (text: string) => {
+      if (!text.trim()) return;
+      if (isStreaming) return;
+
+      streamCancelledRef.current = false;
+      for (const id of streamTimeoutsRef.current) clearTimeout(id);
+      streamTimeoutsRef.current = [];
+
+      const userMessage: Message = {
+        id: Date.now().toString(),
+        text: text.trim(),
+        role: "user",
+        timestamp: Date.now(),
+      };
+
+      setMessages((prev) => [...prev, userMessage]);
+      setIsStreaming(true);
+
+      // Simulate streaming assistant response
+      const responses = [
+        "That's interesting! Tell me more about what you're building. I'd love to hear more details about your project and how the keyboard handling fits into your app's UX.",
+        "I see what you mean. Good keyboard handling really does make a difference in chat UX. The native feel of smooth animations and proper content insets creates a much more polished experience.",
+        "Great observation! Notice how the content adjusts as you type. This library handles all the edge cases: keyboard show/hide, input growing, maintaining scroll position, and more.",
+        "Thanks for trying out the keyboard composer! This demonstrates ChatGPT-style pin-to-top behavior where new messages appear at the top with room for the response to stream in below.",
+      ];
+      // Use the last (long) response for testing, or random for variety
+      const fullResponse = responses[responses.length - 1]; // Always use long response for testing
+      // const fullResponse = responses[Math.floor(Math.random() * responses.length)];
+      const assistantId = (Date.now() + 1).toString();
+
+      // Add empty assistant message first (like typing indicator)
+      const typingTimer = setTimeout(() => {
+        if (streamCancelledRef.current) return;
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: assistantId,
+            text: "",
+            role: "assistant",
+            timestamp: Date.now(),
+          },
+        ]);
+      }, 500);
+      streamTimeoutsRef.current.push(typingTimer);
+
+      // Stream the response word by word
+      const words = fullResponse.split(" ");
+      let currentText = "";
+
+      words.forEach((word, index) => {
+        const t = setTimeout(() => {
+          if (streamCancelledRef.current) return;
+          currentText += (index === 0 ? "" : " ") + word;
+          const streamedText = currentText;
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === assistantId ? { ...msg, text: streamedText } : msg
+            )
+          );
+          if (index === words.length - 1) {
+            setIsStreaming(false);
+          }
+        }, 600 + index * 50); // 50ms per word
+        streamTimeoutsRef.current.push(t);
+      });
+    },
+    [isStreaming]
+  );
 
   const renderMessage = (item: Message) => {
     const isUser = item.role === "user";
@@ -273,10 +299,12 @@ function ChatScreen() {
                 style={{ flex: 1 }}
                 placeholder="Ask anything"
                 onSend={handleSend}
+                onStop={handleStop}
                 onHeightChange={handleHeightChange}
                 minHeight={constants.defaultMinHeight}
                 maxHeight={constants.defaultMaxHeight}
                 sendButtonEnabled={true}
+                isStreaming={isStreaming}
               />
             </View>
           </View>

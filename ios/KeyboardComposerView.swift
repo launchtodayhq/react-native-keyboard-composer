@@ -128,7 +128,7 @@ class KeyboardComposerView: ExpoView {
     // Placeholder
     placeholderLabel.text = placeholder
     placeholderLabel.font = .systemFont(ofSize: 16)
-    placeholderLabel.textColor = .placeholderText
+    placeholderLabel.textColor = placeholderColor()
     containerView.addSubview(placeholderLabel)
 
     // Send/Stop button
@@ -143,6 +143,24 @@ class KeyboardComposerView: ExpoView {
     DispatchQueue.main.async { [weak self] in
       self?.onHeightChange(["height": self?.minHeight ?? 48])
     }
+  }
+
+  private func placeholderColor() -> UIColor {
+    // Slightly darker than `.placeholderText` for better readability.
+    // Keep platform-appropriate contrast in light/dark mode.
+    return UIColor { traits in
+      if traits.userInterfaceStyle == .dark {
+        return UIColor(white: 0.72, alpha: 1.0)
+      } else {
+        return UIColor(white: 0.40, alpha: 1.0)
+      }
+    }
+  }
+
+  override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+    super.traitCollectionDidChange(previousTraitCollection)
+    // Ensure placeholder color stays correct when switching light/dark mode.
+    placeholderLabel.textColor = placeholderColor()
   }
 
   override func layoutSubviews() {
