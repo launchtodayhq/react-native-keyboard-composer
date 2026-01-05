@@ -13,7 +13,6 @@ class KeyboardAwareWrapper: ExpoView, KeyboardAwareScrollHandlerDelegate {
         }
     }()
     private var currentKeyboardHeight: CGFloat = 0
-    private var isKeyboardOpen = false  // Track true keyboard state via show/hide notifications
     
     // Composer handling (like Android)
     private weak var composerContainer: UIView?
@@ -45,8 +44,13 @@ class KeyboardAwareWrapper: ExpoView, KeyboardAwareScrollHandlerDelegate {
     required init(appContext: AppContext? = nil) {
         super.init(appContext: appContext)
         keyboardHandler.delegate = self
+        keyboardHandler.onKeyboardMetricsChanged = { [weak self] height, duration, curve in
+            guard let self else { return }
+            self.currentKeyboardHeight = height
+            self.animateComposerAndButton(duration: duration, curve: curve)
+            self.composerView?.notifyKeyboardHeight(height)
+        }
         setupScrollToBottomButton()
-        setupKeyboardObservers()
         setupPropertyObservers()
         NotificationCenter.default.addObserver(
             self,
@@ -114,84 +118,6 @@ class KeyboardAwareWrapper: ExpoView, KeyboardAwareScrollHandlerDelegate {
         guard sender === composerView else { return }
         guard pinToTopEnabled else { return }
         keyboardHandler.requestPinForNextContentAppend()
-    }
-    
-    // MARK: - Keyboard Observers
-    
-    private func setupKeyboardObservers() {
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(keyboardWillShow(_:)),
-            name: UIResponder.keyboardWillShowNotification,
-            object: nil
-        )
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(keyboardWillHide(_:)),
-            name: UIResponder.keyboardWillHideNotification,
-            object: nil
-        )
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(keyboardWillChangeFrame(_:)),
-            name: UIResponder.keyboardWillChangeFrameNotification,
-            object: nil
-        )
-    }
-    
-    @objc private func keyboardWillShow(_ notification: Notification) {
-        handleKeyboardChange(notification: notification, isShowing: true)
-    }
-    
-    @objc private func keyboardWillHide(_ notification: Notification) {
-        handleKeyboardChange(notification: notification, isShowing: false)
-    }
-    
-    @objc private func keyboardWillChangeFrame(_ notification: Notification) {
-        // This handles interactive dismiss and height changes
-        guard let userInfo = notification.userInfo,
-              let keyboardFrame = userInfo[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect,
-              let duration = userInfo[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double,
-              let curve = userInfo[UIResponder.keyboardAnimationCurveUserInfoKey] as? UInt else { return }
-        
-        // Check if keyboard is visible based on frame position
-        let screenHeight = UIScreen.main.bounds.height
-        let isVisibleByFrame = keyboardFrame.origin.y < screenHeight
-        
-        // CRITICAL: Don't trust frame-based visibility if we know keyboard is open
-        // iOS can send misleading frame notifications during text input changes
-        let newKeyboardHeight: CGFloat
-        if isKeyboardOpen {
-            // Keyboard is definitely open, use the reported height (ignore visibility check)
-            newKeyboardHeight = keyboardFrame.height
-        } else if isVisibleByFrame {
-            // Keyboard appears to be visible by frame
-            newKeyboardHeight = keyboardFrame.height
-        } else {
-            // Keyboard not visible and not open - this is fine
-            newKeyboardHeight = 0
-        }
-        
-        // Only animate if keyboard height actually changed
-        guard newKeyboardHeight != currentKeyboardHeight else {
-            return
-        }
-        
-        currentKeyboardHeight = newKeyboardHeight
-        animateComposerAndButton(duration: duration, curve: curve)
-    }
-    
-    private func handleKeyboardChange(notification: Notification, isShowing: Bool) {
-        guard let userInfo = notification.userInfo,
-              let keyboardFrame = userInfo[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect,
-              let duration = userInfo[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double,
-              let curve = userInfo[UIResponder.keyboardAnimationCurveUserInfoKey] as? UInt else { return }
-        
-        // Track true keyboard state - this is authoritative
-        isKeyboardOpen = isShowing
-        currentKeyboardHeight = isShowing ? keyboardFrame.height : 0
-
-        animateComposerAndButton(duration: duration, curve: curve)
     }
     
     private func animateComposerAndButton(duration: Double, curve: UInt) {

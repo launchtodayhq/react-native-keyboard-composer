@@ -66,8 +66,7 @@ class KeyboardComposerView: ExpoView {
   private let sendButton = UIButton(type: .system)
 
   // MARK: - Keyboard tracking
-  private var currentKeyboardHeight: CGFloat = 0
-  private var displayLink: CADisplayLink?
+  private var lastNotifiedKeyboardHeight: CGFloat = 0
   private var pendingAutoFocus: Bool = false
   
   // MARK: - Height tracking
@@ -81,7 +80,6 @@ class KeyboardComposerView: ExpoView {
   }
 
   deinit {
-    displayLink?.invalidate()
     NotificationCenter.default.removeObserver(self)
   }
 
@@ -229,15 +227,7 @@ class KeyboardComposerView: ExpoView {
     super.didMoveToWindow()
 
     guard let window = window else {
-      displayLink?.invalidate()
-      displayLink = nil
       return
-    }
-
-    if #available(iOS 15.0, *) {
-      setupKeyboardLayoutGuide(in: window)
-    } else {
-      setupKeyboardNotifications()
     }
 
     if (autoFocus || pendingAutoFocus) {
@@ -258,62 +248,10 @@ class KeyboardComposerView: ExpoView {
     }
   }
 
-  @available(iOS 15.0, *)
-  private func setupKeyboardLayoutGuide(in window: UIWindow) {
-    window.keyboardLayoutGuide.followsUndockedKeyboard = true
-    displayLink?.invalidate()
-    displayLink = CADisplayLink(target: self, selector: #selector(trackKeyboardPosition))
-    displayLink?.add(to: .main, forMode: .common)
-  }
-
-  @objc private func trackKeyboardPosition() {
-    guard let window = window else { return }
-
-    if #available(iOS 15.0, *) {
-      let guideFrame = window.keyboardLayoutGuide.layoutFrame
-      let keyboardHeight = max(0, window.bounds.height - guideFrame.minY)
-
-      if abs(keyboardHeight - currentKeyboardHeight) > 0.5 {
-        currentKeyboardHeight = keyboardHeight
-        onKeyboardHeightChange([
-          "height": keyboardHeight
-        ])
-      }
-    }
-  }
-
-  private func setupKeyboardNotifications() {
-    NotificationCenter.default.addObserver(
-      self,
-      selector: #selector(keyboardWillShow),
-      name: UIResponder.keyboardWillShowNotification,
-      object: nil
-    )
-    NotificationCenter.default.addObserver(
-      self,
-      selector: #selector(keyboardWillHide),
-      name: UIResponder.keyboardWillHideNotification,
-      object: nil
-    )
-  }
-
-  @objc private func keyboardWillShow(_ notification: Notification) {
-    guard let userInfo = notification.userInfo,
-          let keyboardFrame = userInfo[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else {
-      return
-    }
-    let keyboardHeight = keyboardFrame.height
-    if keyboardHeight != currentKeyboardHeight {
-      currentKeyboardHeight = keyboardHeight
-      onKeyboardHeightChange(["height": keyboardHeight])
-    }
-  }
-
-  @objc private func keyboardWillHide(_ notification: Notification) {
-    if currentKeyboardHeight != 0 {
-      currentKeyboardHeight = 0
-      onKeyboardHeightChange(["height": 0])
-    }
+  func notifyKeyboardHeight(_ height: CGFloat) {
+    if abs(height - lastNotifiedKeyboardHeight) <= 0.5 { return }
+    lastNotifiedKeyboardHeight = height
+    onKeyboardHeightChange(["height": height])
   }
 
   // MARK: - Actions

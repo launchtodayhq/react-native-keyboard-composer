@@ -11,6 +11,9 @@ protocol KeyboardAwareScrollHandlerDelegate: AnyObject {
 class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrollViewDelegate {
     weak var scrollView: UIScrollView?
     weak var delegate: KeyboardAwareScrollHandlerDelegate?
+    /// Single source of truth for keyboard metrics (height + animation params).
+    /// Consumers (e.g., wrapper) can animate UI in sync with iOS keyboard.
+    var onKeyboardMetricsChanged: ((CGFloat, Double, UInt) -> Void)?
     /// Base inset WITHOUT safe area (composer + gap)
     var baseBottomInset: CGFloat = 64 // 48 + 16
     private var keyboardHeight: CGFloat = 0
@@ -18,6 +21,7 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
     private var isAtBottom = true
     private var isKeyboardVisible = false  // Track if keyboard is already showing
     private var isKeyboardHiding: Bool = false
+    private let dismissKeyboardVelocityThreshold: CGFloat = -1.2
 
     // Pin-to-top + runway state
     private enum PinState {
@@ -176,17 +180,45 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
             name: UIResponder.keyboardWillHideNotification,
             object: nil
         )
+
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(keyboardWillChangeFrame(_:)),
+            name: UIResponder.keyboardWillChangeFrameNotification,
+            object: nil
+        )
+    }
+
+    private func shouldAdjustScrollForKeyboard(_ scrollView: UIScrollView, keyboardHeight: CGFloat) -> Bool {
+        // If the user is manually scrolling (pinned but not enforcing), allow the keyboard adjustment.
+        let pinBlocksKeyboardAdjust: Bool = {
+            switch self.pinState {
+            case .pinned(_, let enforce):
+                return enforce
+            case .animating:
+                return true
+            case .idle, .armed, .deferred:
+                return false
+            }
+        }()
+        guard !pinBlocksKeyboardAdjust else { return false }
+
+        // Treat the "danger zone" (content close enough to be covered) as "near bottom"
+        // so we keep content above the keyboard.
+        let threshold = max(140, min(520, keyboardHeight + 80))
+        return isNearBottom(scrollView, threshold: threshold)
     }
     
     @objc private func keyboardWillShow(_ notification: Notification) {
-        guard let scrollView = scrollView,
-              let userInfo = notification.userInfo,
+        guard let userInfo = notification.userInfo,
               let keyboardFrame = userInfo[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect,
               let duration = userInfo[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double,
               let curveValue = userInfo[UIResponder.keyboardAnimationCurveUserInfoKey] as? UInt
         else { return }
         
         let newKeyboardHeight = keyboardFrame.height
+        onKeyboardMetricsChanged?(newKeyboardHeight, duration, curveValue)
+        guard let scrollView = scrollView else { return }
         
         // Only do scroll-to-bottom logic on INITIAL keyboard show, not on subsequent height changes
         let isInitialShow = !isKeyboardVisible
@@ -196,23 +228,7 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
         if isInitialShow {
             // When pinned (runway active), don't treat this as "at bottom" for keyboard open behavior,
             // otherwise we'll pull the pinned content down by scrolling to a non-runway maxOffset.
-            // If content is close enough that the keyboard would cover it, treat as "near bottom"
-            // and push it above the keyboard in the same animation.
-            let nearBottomThreshold = max(140, min(520, newKeyboardHeight + 80))
-            let nearBottom = isNearBottom(scrollView, threshold: nearBottomThreshold)
-            // If the user is manually scrolling (pinned but not enforcing), allow the keyboard-open
-            // push-up behavior to run based on proximity to bottom.
-            let pinBlocksKeyboardPush: Bool = {
-                switch self.pinState {
-                case .pinned(_, let enforce):
-                    return enforce
-                case .animating:
-                    return true
-                case .idle, .armed, .deferred:
-                    return false
-                }
-            }()
-            wasAtBottom = !pinBlocksKeyboardPush && nearBottom
+            wasAtBottom = shouldAdjustScrollForKeyboard(scrollView, keyboardHeight: newKeyboardHeight)
         }
         keyboardHeight = newKeyboardHeight
         
@@ -247,6 +263,9 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
               let curveValue = userInfo[UIResponder.keyboardAnimationCurveUserInfoKey] as? UInt
         else { return }
         
+        onKeyboardMetricsChanged?(0, duration, curveValue)
+        guard scrollView != nil else { return }
+
         keyboardHeight = 0
         isKeyboardVisible = false  // Reset flag when keyboard hides
         isKeyboardHiding = true
@@ -270,6 +289,53 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
                     self.applyPinAfterSend(messageStartY: messageStartY, contentHeightAfter: contentHeightAfter)
                 }
             }
+        )
+    }
+
+    @objc private func keyboardWillChangeFrame(_ notification: Notification) {
+        guard let userInfo = notification.userInfo,
+              let keyboardFrame = userInfo[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect,
+              let duration = userInfo[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double,
+              let curveValue = userInfo[UIResponder.keyboardAnimationCurveUserInfoKey] as? UInt
+        else { return }
+
+        let screenHeight = UIScreen.main.bounds.height
+        let isVisibleByFrame = keyboardFrame.origin.y < screenHeight
+        let newKeyboardHeight = isVisibleByFrame ? keyboardFrame.height : 0
+
+        if abs(newKeyboardHeight - keyboardHeight) <= 0.5 { return }
+        onKeyboardMetricsChanged?(newKeyboardHeight, duration, curveValue)
+
+        guard let scrollView = scrollView else {
+            keyboardHeight = newKeyboardHeight
+            isKeyboardVisible = newKeyboardHeight > 0.5
+            return
+        }
+
+        let wasVisible = isKeyboardVisible
+        keyboardHeight = newKeyboardHeight
+        isKeyboardVisible = newKeyboardHeight > 0.5
+        let shouldAdjust = shouldAdjustScrollForKeyboard(scrollView, keyboardHeight: newKeyboardHeight)
+        if !wasVisible && isKeyboardVisible {
+            wasAtBottom = shouldAdjust
+        }
+
+        let animationOptions = UIView.AnimationOptions(rawValue: curveValue << 16)
+        UIView.animate(
+            withDuration: duration,
+            delay: 0,
+            options: animationOptions,
+            animations: {
+                self.updateContentInset(preserveScrollPosition: self.isPinActive)
+                if shouldAdjust {
+                    let contentHeight = scrollView.contentSize.height
+                    let scrollViewHeight = scrollView.bounds.height
+                    let bottomInset = self.baseBottomInset + self.keyboardHeight
+                    let maxOffset = max(0, contentHeight - scrollViewHeight + bottomInset)
+                    scrollView.contentOffset = CGPoint(x: 0, y: maxOffset)
+                }
+            },
+            completion: nil
         )
     }
     
@@ -371,6 +437,9 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
             // Ensure our manual `verticalScrollIndicatorInsets` values take effect.
             scrollView.automaticallyAdjustsScrollIndicatorInsets = false
         }
+        // Enable native keyboard dismissal by dragging the scroll view.
+        // This matches ChatGPT-style behavior on iOS.
+        scrollView.keyboardDismissMode = .interactive
         scrollView.delegate = self
         updateContentInset()
         
@@ -427,6 +496,14 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
 
     func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
         userIsInteracting = false
+    }
+
+    func scrollViewWillEndDragging(_ scrollView: UIScrollView, withVelocity velocity: CGPoint, targetContentOffset: UnsafeMutablePointer<CGPoint>) {
+        guard isKeyboardVisible || keyboardHeight > 0.5 else { return }
+        // velocity.y < 0 means the user is pulling down (a "dismiss" gesture).
+        if velocity.y <= dismissKeyboardVelocityThreshold {
+            scrollView.window?.endEditing(true)
+        }
     }
     
     /// Check scroll position and notify delegate if changed
