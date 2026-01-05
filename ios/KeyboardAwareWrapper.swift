@@ -6,7 +6,6 @@ import UIKit
 class KeyboardAwareWrapper: ExpoView, KeyboardAwareScrollHandlerDelegate {
     private let keyboardHandler = KeyboardAwareScrollHandler()
     private var hasAttached = false
-    private var attachRetryCount: Int = 0
     private lazy var scrollButtonController: ScrollToBottomButtonController = {
         ScrollToBottomButtonController(hostView: self) { [weak self] in
             self?.keyboardHandler.scrollToBottomAnimated()
@@ -17,6 +16,7 @@ class KeyboardAwareWrapper: ExpoView, KeyboardAwareScrollHandlerDelegate {
     // Composer handling (like Android)
     private weak var composerContainer: UIView?
     private weak var composerView: KeyboardComposerView?  // The actual KeyboardComposerView for height measurement
+    private weak var registeredScrollView: UIScrollView?
     private var safeAreaBottom: CGFloat = 0
     
     // Track composer height to detect changes (since props may not trigger observers with Fabric)
@@ -59,6 +59,54 @@ class KeyboardAwareWrapper: ExpoView, KeyboardAwareScrollHandlerDelegate {
             object: nil
         )
     }
+    private func attachIfReady() {
+        guard !hasAttached else { return }
+        guard let sv = registeredScrollView else { return }
+        let composerHeight = composerView?.bounds.height ?? extraBottomInset
+        keyboardHandler.setBaseInset(composerHeight)
+        keyboardHandler.attach(to: sv)
+        hasAttached = true
+    }
+
+    private func findFirstScrollView(in view: UIView) -> UIScrollView? {
+        if let sv = view as? UIScrollView { return sv }
+        for sub in view.subviews {
+            if let sv = findFirstScrollView(in: sub) { return sv }
+        }
+        return nil
+    }
+
+    private func findFirstComposerView(in view: UIView) -> KeyboardComposerView? {
+        if let composer = view as? KeyboardComposerView { return composer }
+        for sub in view.subviews {
+            if let composer = findFirstComposerView(in: sub) { return composer }
+        }
+        return nil
+    }
+
+    private func directChildContainer(for view: UIView) -> UIView? {
+        var container: UIView? = view
+        while let parent = container?.superview, parent !== self {
+            container = parent
+        }
+        return container
+    }
+
+    func registerComposerView(_ composer: KeyboardComposerView) {
+        composerView = composer
+        // Note: during React Native mounting, the composer can be attached to intermediate containers
+        // before the final hierarchy is settled. Re-resolve in layoutSubviews as well.
+        composerContainer = directChildContainer(for: composer)
+        attachIfReady()
+        setNeedsLayout()
+    }
+
+    private func registerScrollViewIfNeeded(_ sv: UIScrollView) {
+        if registeredScrollView === sv { return }
+        registeredScrollView = sv
+        attachIfReady()
+    }
+
     
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
@@ -110,11 +158,11 @@ class KeyboardAwareWrapper: ExpoView, KeyboardAwareScrollHandlerDelegate {
 
     @objc private func handleComposerDidSend(_ notification: Notification) {
         guard let sender = notification.object as? KeyboardComposerView else { return }
-
+        // Composer registers itself with this wrapper in `KeyboardComposerView.didMoveToSuperview()`.
+        // If we haven't registered yet, accept the sender as the composer.
         if composerView == nil {
-            composerView = ViewHierarchyFinder.findComposerView(in: self)
+            registerComposerView(sender)
         }
-
         guard sender === composerView else { return }
         guard pinToTopEnabled else { return }
         keyboardHandler.requestPinForNextContentAppend()
@@ -236,13 +284,11 @@ class KeyboardAwareWrapper: ExpoView, KeyboardAwareScrollHandlerDelegate {
         
         // Update safe area
         safeAreaBottom = window?.safeAreaInsets.bottom ?? 34
-        
-        // Re-find composer if lost (weak reference might have been cleared)
-        if composerView == nil || composerContainer == nil {
-            if let comp = ViewHierarchyFinder.findComposerView(in: self) {
-                composerView = comp
-                composerContainer = ViewHierarchyFinder.findDirectChildContainer(for: comp, in: self)
-            }
+
+        // Ensure we have a stable reference to the wrapper's direct child container for the composer.
+        // If this is nil, composer transforms won't apply and hitTest may steal touches from the input.
+        if composerContainer == nil, let composerView {
+            composerContainer = directChildContainer(for: composerView)
         }
         
         // Detect composer height changes from actual KeyboardComposerView frame
@@ -268,41 +314,6 @@ class KeyboardAwareWrapper: ExpoView, KeyboardAwareScrollHandlerDelegate {
         updateScrollButtonTransform()
         
         scrollButtonController.bringToFront()
-        
-        // Find and attach to scroll view and composer (only once)
-        if !hasAttached {
-            DispatchQueue.main.async { [weak self] in
-                self?.findAndAttachViews()
-            }
-        }
-    }
-    
-    private func findAndAttachViews() {
-        WrapperAttachmentCoordinator.attachIfNeeded(
-            host: self,
-            getHasAttached: { [weak self] in self?.hasAttached ?? true },
-            setHasAttached: { [weak self] value in self?.hasAttached = value },
-            getComposerView: { [weak self] in self?.composerView },
-            setComposerView: { [weak self] value in self?.composerView = value },
-            setComposerContainer: { [weak self] value in self?.composerContainer = value },
-            getExtraBottomInset: { [weak self] in self?.extraBottomInset ?? 0 },
-            setLastComposerHeight: { [weak self] value in self?.lastComposerHeight = value },
-            updateComposerTransform: { [weak self] in self?.updateComposerTransform() },
-            setBaseInset: { [weak self] baseInset in
-                self?.keyboardHandler.setBaseInset(baseInset)
-            },
-            attachScrollHandler: { [weak self] sv in
-                self?.keyboardHandler.attach(to: sv)
-            },
-            scheduleRetry: { [weak self] retry in
-                guard let self else { return }
-                guard self.attachRetryCount < 30 else { return }
-                self.attachRetryCount += 1
-                DispatchQueue.main.async {
-                    retry()
-                }
-            }
-        )
     }
     
     // MARK: - React Native Subview Management
@@ -311,7 +322,23 @@ class KeyboardAwareWrapper: ExpoView, KeyboardAwareScrollHandlerDelegate {
         super.insertReactSubview(subview, at: atIndex)
         // Note: Don't reset hasAttached or composerContainer here
         // React calls this frequently during layout, resetting would lose our references
+        if let sv = findFirstScrollView(in: subview) {
+            registerScrollViewIfNeeded(sv)
+        }
+        if let composer = findFirstComposerView(in: subview) {
+            registerComposerView(composer)
+        }
         setNeedsLayout()
+    }
+
+    override func didAddSubview(_ subview: UIView) {
+        super.didAddSubview(subview)
+        if let sv = findFirstScrollView(in: subview) {
+            registerScrollViewIfNeeded(sv)
+        }
+        if let composer = findFirstComposerView(in: subview) {
+            registerComposerView(composer)
+        }
     }
     
     // MARK: - Public API for JS
@@ -326,11 +353,17 @@ class KeyboardAwareWrapper: ExpoView, KeyboardAwareScrollHandlerDelegate {
 
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
         // Never steal touches that belong to the composer or the scroll-to-bottom button.
-        if let button = scrollButtonController.buttonView(), button.frame.contains(point) {
-            return button
+        if let button = scrollButtonController.buttonView() {
+            let p = button.convert(point, from: self)
+            if button.bounds.contains(p) {
+                return button
+            }
         }
-        if let container = composerContainer, container.frame.contains(point) {
-            return super.hitTest(point, with: event)
+        if let container = composerContainer {
+            let p = container.convert(point, from: self)
+            if container.bounds.contains(p) {
+                return super.hitTest(point, with: event)
+            }
         }
 
         if let sv = keyboardHandler.scrollView {

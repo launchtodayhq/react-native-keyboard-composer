@@ -238,6 +238,18 @@ class KeyboardComposerView: ExpoView {
     }
   }
 
+  override func didMoveToSuperview() {
+    super.didMoveToSuperview()
+    var v: UIView? = superview
+    while let current = v {
+      if let wrapper = current as? KeyboardAwareWrapper {
+        wrapper.registerComposerView(self)
+        break
+      }
+      v = current.superview
+    }
+  }
+
   private func requestFocusIfPossible() {
     if window == nil {
       pendingAutoFocus = true
