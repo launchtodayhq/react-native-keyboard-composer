@@ -6,6 +6,7 @@ import UIKit
 class KeyboardAwareWrapper: ExpoView, KeyboardAwareScrollHandlerDelegate {
     private let keyboardHandler = KeyboardAwareScrollHandler()
     private var hasAttached = false
+    private var attachRetryCount: Int = 0
     private lazy var scrollButtonController: ScrollToBottomButtonController = {
         ScrollToBottomButtonController(hostView: self) { [weak self] in
             self?.keyboardHandler.scrollToBottomAnimated()
@@ -24,7 +25,6 @@ class KeyboardAwareWrapper: ExpoView, KeyboardAwareScrollHandlerDelegate {
 
     
     // Constants matching Android
-    private let CONTENT_GAP: CGFloat = 24
     private let COMPOSER_KEYBOARD_GAP: CGFloat = 10
     private let MIN_BOTTOM_PADDING: CGFloat = 16  // Minimum padding when keyboard closed
     
@@ -83,7 +83,7 @@ class KeyboardAwareWrapper: ExpoView, KeyboardAwareScrollHandlerDelegate {
                     self.keyboardHandler.adjustScrollForComposerGrowth(delta: delta)
                 }
 
-                self.keyboardHandler.setBaseInset(newValue + self.CONTENT_GAP)
+                self.keyboardHandler.setBaseInset(newValue)
                 self.updateScrollButtonBasePosition()
             },
             onScrollToTopTrigger: { [weak self] in
@@ -326,8 +326,7 @@ class KeyboardAwareWrapper: ExpoView, KeyboardAwareScrollHandlerDelegate {
             ComposerHeightCoordinator.updateIfNeeded(
                 composerView: composer,
                 lastComposerHeight: &lastComposerHeight,
-                keyboardHandler: keyboardHandler,
-                contentGap: CONTENT_GAP
+                keyboardHandler: keyboardHandler
             )
         }
         
@@ -361,7 +360,6 @@ class KeyboardAwareWrapper: ExpoView, KeyboardAwareScrollHandlerDelegate {
             setComposerView: { [weak self] value in self?.composerView = value },
             setComposerContainer: { [weak self] value in self?.composerContainer = value },
             getExtraBottomInset: { [weak self] in self?.extraBottomInset ?? 0 },
-            getContentGap: { [weak self] in self?.CONTENT_GAP ?? 0 },
             setLastComposerHeight: { [weak self] value in self?.lastComposerHeight = value },
             updateComposerTransform: { [weak self] in self?.updateComposerTransform() },
             setBaseInset: { [weak self] baseInset in
@@ -371,8 +369,10 @@ class KeyboardAwareWrapper: ExpoView, KeyboardAwareScrollHandlerDelegate {
                 self?.keyboardHandler.attach(to: sv)
             },
             scheduleRetry: { [weak self] retry in
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
-                    guard self != nil else { return }
+                guard let self else { return }
+                guard self.attachRetryCount < 30 else { return }
+                self.attachRetryCount += 1
+                DispatchQueue.main.async {
                     retry()
                 }
             }

@@ -39,9 +39,7 @@ class KeyboardComposerView: ExpoView {
   var autoFocus: Bool = false {
     didSet {
       if autoFocus {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
-          self?.textView.becomeFirstResponder()
-        }
+        requestFocusIfPossible()
       }
     }
   }
@@ -70,6 +68,7 @@ class KeyboardComposerView: ExpoView {
   // MARK: - Keyboard tracking
   private var currentKeyboardHeight: CGFloat = 0
   private var displayLink: CADisplayLink?
+  private var pendingAutoFocus: Bool = false
   
   // MARK: - Height tracking
   private var currentHeight: CGFloat = 48
@@ -239,6 +238,23 @@ class KeyboardComposerView: ExpoView {
       setupKeyboardLayoutGuide(in: window)
     } else {
       setupKeyboardNotifications()
+    }
+
+    if (autoFocus || pendingAutoFocus) {
+      pendingAutoFocus = false
+      DispatchQueue.main.async { [weak self] in
+        self?.textView.becomeFirstResponder()
+      }
+    }
+  }
+
+  private func requestFocusIfPossible() {
+    if window == nil {
+      pendingAutoFocus = true
+      return
+    }
+    DispatchQueue.main.async { [weak self] in
+      self?.textView.becomeFirstResponder()
     }
   }
 

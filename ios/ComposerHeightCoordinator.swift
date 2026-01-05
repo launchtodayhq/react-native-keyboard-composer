@@ -4,8 +4,7 @@ enum ComposerHeightCoordinator {
     static func updateIfNeeded(
         composerView: KeyboardComposerView,
         lastComposerHeight: inout CGFloat,
-        keyboardHandler: KeyboardAwareScrollHandler,
-        contentGap: CGFloat
+        keyboardHandler: KeyboardAwareScrollHandler
     ) {
         let currentHeight = composerView.bounds.height
         guard currentHeight > 0 else { return }
@@ -15,8 +14,7 @@ enum ComposerHeightCoordinator {
         handleHeightChange(
             newHeight: currentHeight,
             delta: delta,
-            keyboardHandler: keyboardHandler,
-            contentGap: contentGap
+            keyboardHandler: keyboardHandler
         )
         lastComposerHeight = currentHeight
     }
@@ -24,8 +22,7 @@ enum ComposerHeightCoordinator {
     private static func handleHeightChange(
         newHeight: CGFloat,
         delta: CGFloat,
-        keyboardHandler: KeyboardAwareScrollHandler,
-        contentGap: CGFloat
+        keyboardHandler: KeyboardAwareScrollHandler
     ) {
         let isNearBottom = keyboardHandler.isUserNearBottom()
 
@@ -33,7 +30,7 @@ enum ComposerHeightCoordinator {
             keyboardHandler.adjustScrollForComposerGrowth(delta: delta)
         }
 
-        keyboardHandler.setBaseInset(newHeight + contentGap, preserveScrollPosition: !isNearBottom)
+        keyboardHandler.setBaseInset(newHeight, preserveScrollPosition: !isNearBottom)
     }
 }
 

@@ -9,7 +9,6 @@ enum WrapperAttachmentCoordinator {
         setComposerView: @escaping (KeyboardComposerView?) -> Void,
         setComposerContainer: @escaping (UIView?) -> Void,
         getExtraBottomInset: @escaping () -> CGFloat,
-        getContentGap: @escaping () -> CGFloat,
         setLastComposerHeight: @escaping (CGFloat) -> Void,
         updateComposerTransform: @escaping () -> Void,
         setBaseInset: @escaping (CGFloat) -> Void,
@@ -23,9 +22,7 @@ enum WrapperAttachmentCoordinator {
 
         if let sv = scrollView {
             let composerHeight = getComposerView()?.bounds.height ?? getExtraBottomInset()
-            let baseInset = composerHeight + getContentGap()
-
-            setBaseInset(baseInset)
+            setBaseInset(composerHeight)
             attachScrollHandler(sv)
             setHasAttached(true)
         }
@@ -47,7 +44,6 @@ enum WrapperAttachmentCoordinator {
                     setComposerView: setComposerView,
                     setComposerContainer: setComposerContainer,
                     getExtraBottomInset: getExtraBottomInset,
-                    getContentGap: getContentGap,
                     setLastComposerHeight: setLastComposerHeight,
                     updateComposerTransform: updateComposerTransform,
                     setBaseInset: setBaseInset,

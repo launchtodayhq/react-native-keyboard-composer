@@ -8,7 +8,7 @@ public class KeyboardComposerModule: Module {
     Constants([
       "defaultMinHeight": 48.0,
       "defaultMaxHeight": 120.0,
-      "contentGap": 32.0 // Gap between last message and composer (points)
+      "contentGap": 0.0 // Gap between last message and composer (points)
     ])
 
     // Composer View definition
