@@ -1,10 +1,8 @@
 # @launchhq/react-native-keyboard-composer
 
-> ⚠️ **Beta - Work In Progress**
->
-> This package is currently in beta and will be published to npm soon. The API may change without notice.
->
-> **To use this package now**, follow the [Local Development Setup](#local-development-setup) instructions below to link it to your project.
+[![npm version](https://img.shields.io/npm/v/%40launchhq%2Freact-native-keyboard-composer)](https://www.npmjs.com/package/@launchhq/react-native-keyboard-composer)
+[![npm downloads](https://img.shields.io/npm/dm/%40launchhq%2Freact-native-keyboard-composer)](https://www.npmjs.com/package/@launchhq/react-native-keyboard-composer)
+[![license](https://img.shields.io/npm/l/%40launchhq%2Freact-native-keyboard-composer)](https://github.com/launchtodayhq/react-native-keyboard-composer/blob/main/LICENSE)
 
 ---
 
@@ -295,7 +293,7 @@ These gestures provide a natural way to control the keyboard without reaching fo
 
 ### Local Development Setup
 
-To test this package locally in another project before it's published to npm:
+To test this package locally in another project:
 
 ---
 
