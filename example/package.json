@@ -4,15 +4,22 @@
   "packageManager": "pnpm@10.15.0",
   "main": "index.ts",
   "scripts": {
+    "use:local": "pnpm pkg set dependencies.@launchhq/react-native-keyboard-composer=file:.. && pnpm install",
+    "use:published": "pnpm pkg set dependencies.@launchhq/react-native-keyboard-composer=^0.1.1 && pnpm install",
     "start": "expo start",
+    "start:local": "USE_LOCAL_KEYBOARD_COMPOSER=1 expo start",
     "android": "pnpm exec expo run:android --device",
+    "android:local": "USE_LOCAL_KEYBOARD_COMPOSER=1 pnpm exec expo run:android --device",
     "ios": "pnpm exec expo run:ios --device",
+    "ios:local": "USE_LOCAL_KEYBOARD_COMPOSER=1 pnpm exec expo run:ios --device",
     "prebuild": "expo prebuild --clean",
+    "prebuild:local": "USE_LOCAL_KEYBOARD_COMPOSER=1 expo prebuild --clean",
     "doctor": "npx expo doctor",
     "fix": "npx expo install --check"
   },
   "dependencies": {
     "@expo/vector-icons": "15.0.3",
+    "@launchhq/react-native-keyboard-composer": "file:..",
     "@legendapp/list": "^2.0.18",
     "expo": "~54.0.29",
     "expo-linking": "~8.0.10",
@@ -27,9 +34,5 @@
     "typescript": "~5.9.2"
   },
   "private": true,
-  "expo": {
-    "autolinking": {
-      "nativeModulesDir": ".."
-    }
-  }
+  "expo": {}
 }

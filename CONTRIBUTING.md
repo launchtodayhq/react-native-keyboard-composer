@@ -36,6 +36,61 @@ Thank you for your interest in contributing! This guide will help you get starte
    pnpm ios    # or pnpm android
    ```
 
+## Consumer vs Local Development (important)
+
+This repo supports two distinct workflows:
+
+### 1) Consumer workflow (what users do)
+
+In a normal app, you install the package from npm and rebuild native code:
+
+```bash
+pnpm add @launchhq/react-native-keyboard-composer
+npx expo prebuild --clean
+npx expo run:ios
+# or
+npx expo run:android
+```
+
+### 2) Local development workflow (what contributors do)
+
+When developing this library, there are **two different kinds of changes**:
+
+- **JS/TS-only changes** (`src/`, `build/`):
+  - You can often iterate with Metro (no native rebuild required).
+- **Native changes** (`android/`, `ios/`):
+  - You **must** ensure the example app is consuming the local package (not the published npm copy),
+    and then you must rerun prebuild + rebuild the native app.
+
+#### Example app: running against published vs local
+
+From `example/`:
+
+**Published (default / consumer-like):**
+
+```bash
+pnpm use:published
+pnpm install
+pnpm prebuild
+pnpm android
+# or pnpm ios
+```
+
+**Local (for native development):**
+
+```bash
+pnpm use:local
+pnpm install
+pnpm prebuild:local
+pnpm android:local
+# or pnpm ios:local
+```
+
+Notes:
+
+- `pnpm use:local` switches `@launchhq/react-native-keyboard-composer` to `file:..` so Expo autolinking compiles your local `android/` + `ios/` code.
+- `USE_LOCAL_KEYBOARD_COMPOSER=1` toggles the example's Metro + autolinking configuration for local development.
+
 ## Project Structure
 
 ```
@@ -70,6 +125,7 @@ react-native-keyboard-composer/
    ```
 
 2. **Make your changes**
+
    - TypeScript changes go in `src/`
    - iOS native changes go in `ios/`
    - Android native changes go in `android/`
@@ -176,5 +232,3 @@ Be respectful and constructive in all interactions. We're all here to build some
 ## Questions?
 
 Open an issue or reach out to the maintainers. We're happy to help!
-
-

@@ -1,6 +1,6 @@
 {
   "name": "@launchhq/react-native-keyboard-composer",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "packageManager": "pnpm@10.26.0",
   "description": "A native keyboard-aware composer component for React Native with smooth keyboard animations",
   "main": "build/index.js",
@@ -30,7 +30,7 @@
     "lint": "expo-module lint",
     "test": "expo-module test",
     "prepare": "expo-module prepare",
-    "prepublishOnly": "expo-module prepublishOnly",
+    "prepack": "pnpm run build",
     "expo-module": "expo-module",
     "open:ios": "xed example/ios",
     "open:android": "open -a \"Android Studio\" example/android"

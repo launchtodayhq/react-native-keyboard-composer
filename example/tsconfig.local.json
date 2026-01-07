@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "@launchhq/react-native-keyboard-composer": ["../src/index"],
+      "@launchhq/react-native-keyboard-composer/*": ["../src/*"]
+    }
+  }
+}

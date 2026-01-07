@@ -12,13 +12,15 @@ internal object PinToTopRunway {
     )
 
     fun computeTopGapPx(sv: ScrollView, child: View): Int {
-        val contentGroup = child as? ViewGroup
-        return maxOf(
-            0,
-            sv.paddingTop,
-            child.paddingTop,
-            if (contentGroup != null && contentGroup.childCount > 0) contentGroup.getChildAt(0).top else 0
-        )
+        // IMPORTANT:
+        // Only ScrollView paddingTop affects the scroll coordinate system.
+        // Content paddingTop / first-child offsets are part of the content layout and should NOT be
+        // subtracted here, otherwise we double-apply top spacing and the pinned message sits too low
+        // (larger gap than the "normal" first message).
+        //
+        // iOS uses `adjustedContentInset.top` (coordinate system) + a small visual topPadding.
+        // On Android ScrollView, the equivalent coordinate-system inset is `sv.paddingTop`.
+        return sv.paddingTop.coerceAtLeast(0)
     }
 
     fun computeApplyPin(
@@ -33,7 +35,10 @@ internal object PinToTopRunway {
         // IMPORTANT: use *unclamped* max scroll math so pin/runway works even when
         // content is shorter than the viewport. (Clamping to 0 causes pinnedScrollY to
         // be > maxScroll, which then gets clamped during keyboard open/close.)
-        val rawBaseMax = contentHeightAfter - viewportH + basePaddingBottom
+        // IMPORTANT: Android ScrollView's scroll range includes paddingTop + paddingBottom.
+        // If we ignore paddingTop here, the "runway" becomes scrollable and the user can
+        // scroll past the pinned target (breaking the pinned-at-top illusion when returning to bottom).
+        val rawBaseMax = contentHeightAfter - viewportH + sv.paddingTop + basePaddingBottom
 
         // Respect the actual content container's top spacing (no magic numbers):
         // - contentContainerStyle.paddingTop typically lands on the inner content view's paddingTop
@@ -60,10 +65,11 @@ internal object PinToTopRunway {
         childHeight: Int,
         viewportH: Int,
         basePaddingBottom: Int,
-        pinnedScrollY: Int
+        pinnedScrollY: Int,
+        scrollPaddingTop: Int
     ): Int {
         // Use *unclamped* base max so runway remains correct when content < viewport.
-        val rawBaseMax = childHeight - viewportH + basePaddingBottom
+        val rawBaseMax = childHeight - viewportH + scrollPaddingTop + basePaddingBottom
         return (pinnedScrollY - rawBaseMax).coerceAtLeast(0)
     }
 }

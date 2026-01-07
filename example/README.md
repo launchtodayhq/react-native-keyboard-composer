@@ -26,6 +26,23 @@ pnpm ios
 pnpm android
 ```
 
+## Local development (using the package source)
+
+If you're developing the library and want the example to use the local source instead of the published npm package:
+
+```bash
+pnpm use:local
+pnpm install
+pnpm prebuild:local
+pnpm android:local
+# or pnpm ios:local
+```
+
+Notes:
+
+- If you want editor/TypeScript path mapping to point at `../src`, you can temporarily copy `tsconfig.local.json` over `tsconfig.json`.
+- After changing native Android/iOS code in the package, re-run `pnpm prebuild:local` and then `pnpm android:local` / `pnpm ios:local`.
+
 ## What This Demonstrates
 
 1. **KeyboardComposer** - Native text input with smooth keyboard tracking

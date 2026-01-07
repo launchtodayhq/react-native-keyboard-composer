@@ -28,7 +28,7 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
         private const val BUTTON_SIZE_DP = 32
         private const val BUTTON_GAP_DP = 24   // Gap between button and input
         private const val PINNED_TOP_PADDING_DP = 16
-        private const val DEBUG_LOGS = true
+        private const val DEBUG_LOGS = false
         private const val TAG = "KeyboardComposerNative"
     }
     
@@ -366,7 +366,10 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
 
     private fun getMaxScroll(sv: ScrollView): Int {
         val child = sv.getChildAt(0) ?: return 0
-        return (child.height - sv.height + sv.paddingBottom).coerceAtLeast(0)
+        // ScrollView's scroll range includes paddingTop + paddingBottom.
+        // (RN often uses paddingTop for safe-area / header spacing; ignoring it makes
+        // the runway scrollable and breaks pin-to-top restoration when scrolling back down.)
+        return (child.height - sv.height + sv.paddingTop + sv.paddingBottom).coerceAtLeast(0)
     }
     
     private fun isNearBottom(sv: ScrollView): Boolean {
@@ -629,7 +632,8 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
             childHeight = child.height,
             viewportH = viewportH,
             basePaddingBottom = basePaddingBottom,
-            pinnedScrollY = pinnedScrollY
+            pinnedScrollY = pinnedScrollY,
+            scrollPaddingTop = sv.paddingTop
         )
         if (runwayInsetPx == 0) {
             clearPinnedState()

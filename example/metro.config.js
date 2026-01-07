@@ -1,28 +1,12 @@
-// Learn more https://docs.expo.io/guides/customizing-metro
-const { getDefaultConfig } = require("expo/metro-config");
-const path = require("path");
+// Learn more https://docs.expo.dev/guides/customizing-metro/
+//
+// This example supports two modes:
+// - default: behaves like a real consumer (resolves the published package from node_modules)
+// - local: resolves the package from the parent workspace for library development
 
-const projectRoot = __dirname;
-const workspaceRoot = path.resolve(projectRoot, "..");
-
-const config = getDefaultConfig(projectRoot);
-
-// Watch the parent directory for the library source files
-config.watchFolders = [workspaceRoot];
-
-// Block the ENTIRE parent node_modules to avoid duplicate modules
-// Only the library source (src/) is needed from parent
-config.resolver.blockList = [
-  ...Array.from(config.resolver.blockList ?? []),
-  new RegExp(path.resolve(workspaceRoot, "node_modules") + "/.*"),
-];
-
-// Only resolve modules from example's node_modules
-config.resolver.nodeModulesPaths = [path.resolve(projectRoot, "node_modules")];
-
-// Map the library to the parent directory source
-config.resolver.extraNodeModules = {
-  "@launchhq/react-native-keyboard-composer": workspaceRoot,
-};
-
-module.exports = config;
+if (process.env.USE_LOCAL_KEYBOARD_COMPOSER === "1") {
+  module.exports = require("./metro.config.local");
+} else {
+  const { getDefaultConfig } = require("expo/metro-config");
+  module.exports = getDefaultConfig(__dirname);
+}

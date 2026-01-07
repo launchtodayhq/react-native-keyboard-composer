@@ -1,8 +1,8 @@
 # @launchhq/react-native-keyboard-composer
 
-[![npm version](https://img.shields.io/npm/v/%40launchhq%2Freact-native-keyboard-composer)](https://www.npmjs.com/package/@launchhq/react-native-keyboard-composer)
-[![npm downloads](https://img.shields.io/npm/dm/%40launchhq%2Freact-native-keyboard-composer)](https://www.npmjs.com/package/@launchhq/react-native-keyboard-composer)
-[![license](https://img.shields.io/npm/l/%40launchhq%2Freact-native-keyboard-composer)](https://github.com/launchtodayhq/react-native-keyboard-composer/blob/main/LICENSE)
+[![npm version](https://img.shields.io/npm/v/@launchhq/react-native-keyboard-composer)](https://www.npmjs.com/package/@launchhq/react-native-keyboard-composer)
+[![npm downloads](https://img.shields.io/npm/dm/@launchhq/react-native-keyboard-composer)](https://www.npmjs.com/package/@launchhq/react-native-keyboard-composer)
+[![license](https://img.shields.io/npm/l/@launchhq/react-native-keyboard-composer)](https://github.com/launchtodayhq/react-native-keyboard-composer/blob/main/LICENSE)
 
 ---
 
@@ -290,6 +290,11 @@ These gestures provide a natural way to control the keyboard without reaching fo
 - Android API 21+
 
 ## Development
+
+If you’re contributing to this repo (or running the `example/` app locally), see `CONTRIBUTING.md` for a clear breakdown of:
+
+- Running the example against the **published npm package** (consumer mode)
+- Running the example against the **local package source** (native development mode)
 
 ### Local Development Setup
 
