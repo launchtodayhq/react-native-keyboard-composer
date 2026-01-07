@@ -2,6 +2,7 @@ package expo.modules.launchhq.reactnativekeyboardcomposer
 
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
+import android.util.Log
 
 /**
  * Expo module for KeyboardComposer.
@@ -61,6 +62,10 @@ class KeyboardComposerModule : Module() {
         // KeyboardAwareWrapper
         // Auto-named as "KeyboardComposer_KeyboardAwareWrapper"
         View(KeyboardAwareWrapper::class) {
+            Prop("pinToTopEnabled") { view: KeyboardAwareWrapper, value: Boolean ->
+                view.pinToTopEnabled = value
+            }
+
             Prop("extraBottomInset") { view: KeyboardAwareWrapper, value: Float ->
                 view.extraBottomInset = value
             }

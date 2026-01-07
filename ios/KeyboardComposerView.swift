@@ -39,9 +39,7 @@ class KeyboardComposerView: ExpoView {
   var autoFocus: Bool = false {
     didSet {
       if autoFocus {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
-          self?.textView.becomeFirstResponder()
-        }
+        requestFocusIfPossible()
       }
     }
   }
@@ -68,9 +66,8 @@ class KeyboardComposerView: ExpoView {
   private let sendButton = UIButton(type: .system)
 
   // MARK: - Keyboard tracking
-  private var keyboardLayoutConstraint: NSLayoutConstraint?
-  private var currentKeyboardHeight: CGFloat = 0
-  private var displayLink: CADisplayLink?
+  private var lastNotifiedKeyboardHeight: CGFloat = 0
+  private var pendingAutoFocus: Bool = false
   
   // MARK: - Height tracking
   private var currentHeight: CGFloat = 48
@@ -83,7 +80,6 @@ class KeyboardComposerView: ExpoView {
   }
 
   deinit {
-    displayLink?.invalidate()
     NotificationCenter.default.removeObserver(self)
   }
 
@@ -92,8 +88,9 @@ class KeyboardComposerView: ExpoView {
     backgroundColor = .clear
     clipsToBounds = false
 
-    // Container - transparent background (glass effect handled by JS)
-    containerView.backgroundColor = .clear
+    // Container background is handled natively so consumers don't have to wrap in an extra view.
+    // Light mode: #F2F2F2
+    containerView.backgroundColor = UIColor(red: 242.0/255.0, green: 242.0/255.0, blue: 242.0/255.0, alpha: 1.0)
     containerView.layer.cornerRadius = 0
     containerView.clipsToBounds = false
 
@@ -129,7 +126,7 @@ class KeyboardComposerView: ExpoView {
     // Placeholder
     placeholderLabel.text = placeholder
     placeholderLabel.font = .systemFont(ofSize: 16)
-    placeholderLabel.textColor = .placeholderText
+    placeholderLabel.textColor = placeholderColor()
     containerView.addSubview(placeholderLabel)
 
     // Send/Stop button
@@ -144,6 +141,24 @@ class KeyboardComposerView: ExpoView {
     DispatchQueue.main.async { [weak self] in
       self?.onHeightChange(["height": self?.minHeight ?? 48])
     }
+  }
+
+  private func placeholderColor() -> UIColor {
+    // Slightly darker than `.placeholderText` for better readability.
+    // Keep platform-appropriate contrast in light/dark mode.
+    return UIColor { traits in
+      if traits.userInterfaceStyle == .dark {
+        return UIColor(white: 0.72, alpha: 1.0)
+      } else {
+        return UIColor(white: 0.40, alpha: 1.0)
+      }
+    }
+  }
+
+  override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+    super.traitCollectionDidChange(previousTraitCollection)
+    // Ensure placeholder color stays correct when switching light/dark mode.
+    placeholderLabel.textColor = placeholderColor()
   }
 
   override func layoutSubviews() {
@@ -168,11 +183,21 @@ class KeyboardComposerView: ExpoView {
       height: placeholderHeight
     )
     
+    let buttonSize: CGFloat = 32
+    let buttonX = bounds.width - 40
+    let bottomPlacementY = bounds.height - 42
+    // Optical centering tweak. Negative moves the button up.
+    // This is intentionally small and can be tuned by feel.
+    let centerYOffset: CGFloat = -1
+    let centeredY = ((bounds.height - buttonSize) / 2) + centerYOffset
+    let isSingleLine = bounds.height <= (minHeight + 2)
+    let buttonY = isSingleLine ? centeredY : bottomPlacementY
+
     sendButton.frame = CGRect(
-      x: bounds.width - 40,
-      y: bounds.height - 42,
-      width: 32,
-      height: 32
+      x: buttonX,
+      y: buttonY,
+      width: buttonSize,
+      height: buttonSize
     )
     
     if bounds.width != lastBoundsWidth {
@@ -202,74 +227,43 @@ class KeyboardComposerView: ExpoView {
     super.didMoveToWindow()
 
     guard let window = window else {
-      displayLink?.invalidate()
-      displayLink = nil
       return
     }
 
-    if #available(iOS 15.0, *) {
-      setupKeyboardLayoutGuide(in: window)
-    } else {
-      setupKeyboardNotifications()
-    }
-  }
-
-  @available(iOS 15.0, *)
-  private func setupKeyboardLayoutGuide(in window: UIWindow) {
-    window.keyboardLayoutGuide.followsUndockedKeyboard = true
-    displayLink?.invalidate()
-    displayLink = CADisplayLink(target: self, selector: #selector(trackKeyboardPosition))
-    displayLink?.add(to: .main, forMode: .common)
-  }
-
-  @objc private func trackKeyboardPosition() {
-    guard let window = window else { return }
-
-    if #available(iOS 15.0, *) {
-      let guideFrame = window.keyboardLayoutGuide.layoutFrame
-      let keyboardHeight = max(0, window.bounds.height - guideFrame.minY)
-
-      if abs(keyboardHeight - currentKeyboardHeight) > 0.5 {
-        currentKeyboardHeight = keyboardHeight
-        onKeyboardHeightChange([
-          "height": keyboardHeight
-        ])
+    if (autoFocus || pendingAutoFocus) {
+      pendingAutoFocus = false
+      DispatchQueue.main.async { [weak self] in
+        self?.textView.becomeFirstResponder()
       }
     }
   }
 
-  private func setupKeyboardNotifications() {
-    NotificationCenter.default.addObserver(
-      self,
-      selector: #selector(keyboardWillShow),
-      name: UIResponder.keyboardWillShowNotification,
-      object: nil
-    )
-    NotificationCenter.default.addObserver(
-      self,
-      selector: #selector(keyboardWillHide),
-      name: UIResponder.keyboardWillHideNotification,
-      object: nil
-    )
+  override func didMoveToSuperview() {
+    super.didMoveToSuperview()
+    var v: UIView? = superview
+    while let current = v {
+      if let wrapper = current as? KeyboardAwareWrapper {
+        wrapper.registerComposerView(self)
+        break
+      }
+      v = current.superview
+    }
   }
 
-  @objc private func keyboardWillShow(_ notification: Notification) {
-    guard let userInfo = notification.userInfo,
-          let keyboardFrame = userInfo[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else {
+  private func requestFocusIfPossible() {
+    if window == nil {
+      pendingAutoFocus = true
       return
     }
-    let keyboardHeight = keyboardFrame.height
-    if keyboardHeight != currentKeyboardHeight {
-      currentKeyboardHeight = keyboardHeight
-      onKeyboardHeightChange(["height": keyboardHeight])
+    DispatchQueue.main.async { [weak self] in
+      self?.textView.becomeFirstResponder()
     }
   }
 
-  @objc private func keyboardWillHide(_ notification: Notification) {
-    if currentKeyboardHeight != 0 {
-      currentKeyboardHeight = 0
-      onKeyboardHeightChange(["height": 0])
-    }
+  func notifyKeyboardHeight(_ height: CGFloat) {
+    if abs(height - lastNotifiedKeyboardHeight) <= 0.5 { return }
+    lastNotifiedKeyboardHeight = height
+    onKeyboardHeightChange(["height": height])
   }
 
   // MARK: - Actions
@@ -291,6 +285,11 @@ class KeyboardComposerView: ExpoView {
     onSend([
       "text": textView.text ?? ""
     ])
+
+    NotificationCenter.default.post(
+      name: .keyboardComposerDidSend,
+      object: self
+    )
 
     textView.text = ""
     placeholderLabel.isHidden = false
@@ -377,6 +376,10 @@ class KeyboardComposerView: ExpoView {
     updateSendButtonState()
     onChangeText(["text": ""])
   }
+}
+
+extension Notification.Name {
+  static let keyboardComposerDidSend = Notification.Name("KeyboardComposerDidSend")
 }
 
 // MARK: - UITextViewDelegate

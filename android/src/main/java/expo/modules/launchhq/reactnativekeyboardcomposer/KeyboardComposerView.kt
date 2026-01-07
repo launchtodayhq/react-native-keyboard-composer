@@ -25,6 +25,10 @@ import expo.modules.kotlin.viewevent.EventDispatcher
 import expo.modules.kotlin.views.ExpoView
 
 class KeyboardComposerView(context: Context, appContext: AppContext) : ExpoView(context, appContext) {
+    companion object {
+        private const val DEBUG_LOGS = true
+        private const val TAG = "KeyboardComposerNative"
+    }
 
     // MARK: - Event Dispatchers
     private val onChangeText by EventDispatcher()
@@ -89,6 +93,8 @@ class KeyboardComposerView(context: Context, appContext: AppContext) : ExpoView(
             field = value
             updateButtonAppearance()
         }
+
+    internal var onNativeSend: (() -> Unit)? = null
 
     // MARK: - UI Elements
     private val editText: EditText
@@ -190,11 +196,20 @@ class KeyboardComposerView(context: Context, appContext: AppContext) : ExpoView(
                 }
             }
         }
+
+        editText.onFocusChangeListener = View.OnFocusChangeListener { _, hasFocus ->
+            if (DEBUG_LOGS) {
+                android.util.Log.w(TAG, "Composer EditText focus=$hasFocus shown=${editText.isShown} enabled=${editText.isEnabled} textLen=${editText.text?.length ?: 0}")
+            }
+        }
     }
     
     @SuppressLint("ClickableViewAccessibility")
     private fun setupEditTextTouchHandling() {
         editText.setOnTouchListener { v, event ->
+            if (DEBUG_LOGS && event.action == MotionEvent.ACTION_DOWN) {
+                android.util.Log.w(TAG, "Composer EditText ACTION_DOWN shown=${editText.isShown} enabled=${editText.isEnabled} hint='${editText.hint}'")
+            }
             if (v.canScrollVertically(1) || v.canScrollVertically(-1)) {
                 v.parent?.requestDisallowInterceptTouchEvent(true)
                 if (event.action == MotionEvent.ACTION_UP) {
@@ -210,8 +225,10 @@ class KeyboardComposerView(context: Context, appContext: AppContext) : ExpoView(
         if (text.isEmpty()) return
 
         performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+        onNativeSend?.invoke()
         onSend(mapOf("text" to text))
         editText.setText("")
+        hideKeyboard()
         post { updateHeight() }
         updateSendButtonState()
     }
@@ -409,6 +426,9 @@ class KeyboardComposerView(context: Context, appContext: AppContext) : ExpoView(
     }
 
     private fun showKeyboard() {
+        if (DEBUG_LOGS) {
+            android.util.Log.w(TAG, "Composer showKeyboard requestFocus=${editText.hasFocus()} windowTokenNull=${editText.windowToken == null}")
+        }
         val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
         imm.showSoftInput(editText, InputMethodManager.SHOW_IMPLICIT)
     }

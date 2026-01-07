@@ -8,7 +8,7 @@ public class KeyboardComposerModule: Module {
     Constants([
       "defaultMinHeight": 48.0,
       "defaultMaxHeight": 120.0,
-      "contentGap": 32.0 // Gap between last message and composer (points)
+      "contentGap": 0.0 // Gap between last message and composer (points)
     ])
 
     // Composer View definition
@@ -62,8 +62,17 @@ public class KeyboardComposerModule: Module {
     // Second view in module - keyboard-aware wrapper
     // Auto-named as "KeyboardComposer_KeyboardAwareWrapper"
     View(KeyboardAwareWrapper.self) {
+      Prop("pinToTopEnabled") { (view: KeyboardAwareWrapper, value: Bool) in
+        view.pinToTopEnabled = value
+      }
+
       Prop("extraBottomInset") { (view: KeyboardAwareWrapper, value: CGFloat) in
         view.extraBottomInset = value
+      }
+
+      // No-op on iOS (kept for cross-platform API parity; iOS handles headers via ScrollView contentInset).
+      Prop("extraTopInset") { (_: KeyboardAwareWrapper, _: CGFloat) in
+        // Intentionally unused
       }
       
       Prop("scrollToTopTrigger") { (view: KeyboardAwareWrapper, value: Double) in
