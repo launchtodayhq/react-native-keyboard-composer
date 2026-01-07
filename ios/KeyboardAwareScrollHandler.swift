@@ -248,7 +248,7 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
                 if isInitialShow && self.wasAtBottom {
                     let contentHeight = scrollView.contentSize.height
                     let scrollViewHeight = scrollView.bounds.height
-                    let bottomInset = self.baseBottomInset + self.keyboardHeight
+                    let bottomInset = scrollView.contentInset.bottom
                     let maxOffset = max(0, contentHeight - scrollViewHeight + bottomInset)
                     scrollView.contentOffset = CGPoint(x: 0, y: maxOffset)
                 }
@@ -330,7 +330,7 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
                 if shouldAdjust {
                     let contentHeight = scrollView.contentSize.height
                     let scrollViewHeight = scrollView.bounds.height
-                    let bottomInset = self.baseBottomInset + self.keyboardHeight
+                    let bottomInset = scrollView.contentInset.bottom
                     let maxOffset = max(0, contentHeight - scrollViewHeight + bottomInset)
                     scrollView.contentOffset = CGPoint(x: 0, y: maxOffset)
                 }
@@ -372,15 +372,15 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
         let composerHeight = max(0, baseBottomInset)
 
         if keyboardHeight > 0 {
-            // Keyboard open: base + keyboard + small padding
-            baseInset = baseBottomInset + keyboardHeight
+            // Keyboard open: match wrapper's composer transform (keyboard height + gap)
+            baseInset = baseBottomInset + keyboardHeight + composerKeyboardGap
             // Stop just above the composer when keyboard is open
             indicatorInset = keyboardHeight + composerKeyboardGap + composerHeight + indicatorGapAboveInput
         } else {
-            // Keyboard closed: base + safe area
-            baseInset = baseBottomInset + safeAreaBottom
-            // Stop just above the composer when keyboard is closed
             let bottomOffset = max(safeAreaBottom, minBottomPadding)
+            // Keyboard closed: match wrapper (safe area OR minimum padding)
+            baseInset = baseBottomInset + bottomOffset
+            // Stop just above the composer when keyboard is closed
             indicatorInset = bottomOffset + composerHeight + indicatorGapAboveInput
         }
 
@@ -397,10 +397,16 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
         
         // Restore scroll position if needed (prevents visual jump when not at bottom)
         if let savedOffset = savedOffset {
+            // When pin-to-top is active, inset changes can race with contentSize growth (streaming),
+            // causing a visible "bob" as we restore the old offset then correct back to pinnedOffset.
+            // If we're enforcing a pinned offset, always restore directly to the pinned target.
+            if case .pinned(_, let enforce) = pinState, enforce, isPinnedOrRunwayActive {
+                scrollView.setContentOffset(CGPoint(x: savedOffset.x, y: pinnedOffset), animated: false)
+            }
             // If a pin animation is in-flight, never "lock in" a mid-animation offset.
             // Keep the scroll view at the pinned target so streaming/content growth doesn't
             // cancel the pin and snap the content down.
-            if isPinAnimating && isPinnedOrRunwayActive {
+            else if isPinAnimating && isPinnedOrRunwayActive {
                 scrollView.setContentOffset(CGPoint(x: savedOffset.x, y: pinnedOffset), animated: false)
             } else {
                 scrollView.setContentOffset(savedOffset, animated: false)

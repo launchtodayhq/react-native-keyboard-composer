@@ -25,6 +25,7 @@ internal object PinToTopRunway {
         contentHeightAfter: Int,
         viewportH: Int,
         basePaddingBottom: Int,
+        topPaddingPx: Int,
         pendingPinMessageStartY: Int,
         sv: ScrollView,
         child: View
@@ -41,7 +42,7 @@ internal object PinToTopRunway {
         val topGap = computeTopGapPx(sv, child)
 
         val desiredPinned = pendingPinMessageStartY.coerceAtLeast(0)
-        val pinnedTarget = (desiredPinned - topGap).coerceAtLeast(0)
+        val pinnedTarget = (desiredPinned - topGap - topPaddingPx).coerceAtLeast(0)
 
         // We want maxScroll == pinnedTarget, where:
         // maxScroll = max(0, rawBaseMax + runwayInsetPx)

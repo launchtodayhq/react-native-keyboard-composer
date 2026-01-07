@@ -89,8 +89,7 @@ class KeyboardComposerView: ExpoView {
     clipsToBounds = false
 
     // Container background is handled natively so consumers don't have to wrap in an extra view.
-    // Light mode: #F2F2F2
-    containerView.backgroundColor = UIColor(red: 242.0/255.0, green: 242.0/255.0, blue: 242.0/255.0, alpha: 1.0)
+    containerView.backgroundColor = composerBackgroundColor()
     containerView.layer.cornerRadius = 0
     containerView.clipsToBounds = false
 
@@ -100,6 +99,7 @@ class KeyboardComposerView: ExpoView {
     textView.delegate = self
     textView.font = .systemFont(ofSize: 16)
     textView.backgroundColor = .clear
+    textView.textColor = .label
     textView.textContainerInset = UIEdgeInsets(top: 14, left: 12, bottom: 14, right: 44)
     textView.textContainer.lineFragmentPadding = 0
     textView.textContainer.lineBreakMode = .byWordWrapping
@@ -155,10 +155,22 @@ class KeyboardComposerView: ExpoView {
     }
   }
 
+  private func composerBackgroundColor() -> UIColor {
+    return UIColor { traits in
+      if traits.userInterfaceStyle == .dark {
+        return UIColor(red: 28.0/255.0, green: 28.0/255.0, blue: 30.0/255.0, alpha: 1.0) // #1C1C1E
+      } else {
+        return UIColor(red: 242.0/255.0, green: 242.0/255.0, blue: 242.0/255.0, alpha: 1.0) // #F2F2F2
+      }
+    }
+  }
+
   override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
     super.traitCollectionDidChange(previousTraitCollection)
     // Ensure placeholder color stays correct when switching light/dark mode.
     placeholderLabel.textColor = placeholderColor()
+    containerView.backgroundColor = composerBackgroundColor()
+    textView.textColor = .label
   }
 
   override func layoutSubviews() {
