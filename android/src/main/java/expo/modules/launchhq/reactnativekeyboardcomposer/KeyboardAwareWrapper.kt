@@ -27,6 +27,7 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
         private const val COMPOSER_KEYBOARD_GAP_DP = 8
         private const val BUTTON_SIZE_DP = 32
         private const val BUTTON_GAP_DP = 24   // Gap between button and input
+        private const val PINNED_TOP_PADDING_DP = 16
         private const val DEBUG_LOGS = true
         private const val TAG = "KeyboardComposerNative"
     }
@@ -560,11 +561,16 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
         val viewportH = sv.height
         if (viewportH <= 0) return
 
+        // If the IME close animation left any transient translation on the content container,
+        // clear it before pinning so the pinned top gap is consistent whether the keyboard was open or closed.
+        child.translationY = 0f
+
         val basePaddingBottom = getBasePaddingBottomPx()
         val result = PinToTopRunway.computeApplyPin(
             contentHeightAfter = contentHeightAfter,
             viewportH = viewportH,
             basePaddingBottom = basePaddingBottom,
+            topPaddingPx = dpToPx(PINNED_TOP_PADDING_DP),
             pendingPinMessageStartY = pendingPinMessageStartY,
             sv = sv,
             child = child
