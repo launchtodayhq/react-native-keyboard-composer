@@ -203,10 +203,28 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
         }()
         guard !pinBlocksKeyboardAdjust else { return false }
 
-        // Treat the "danger zone" (content close enough to be covered) as "near bottom"
-        // so we keep content above the keyboard.
+        // Decide based on where "bottom" will be AFTER the keyboard opens.
+        // This fixes the case where content doesn't yet scroll with the keyboard closed,
+        // but would become covered once the keyboard appears.
         let threshold = max(140, min(520, keyboardHeight + 80))
-        return isNearBottom(scrollView, threshold: threshold)
+
+        let composerKeyboardGap: CGFloat = 10
+        let projectedBottomInset = baseBottomInset + keyboardHeight + composerKeyboardGap
+        let projectedMaxOffset = max(
+            0,
+            scrollView.contentSize.height - scrollView.bounds.height + projectedBottomInset
+        )
+
+        // If the content doesn't currently exceed the viewport, the user can't be "reading older messages"
+        // by scrolling up — so when the keyboard opens and introduces a projected scroll range,
+        // always adjust to keep bottom content visible above the composer/keyboard.
+        let contentExceedsViewport = scrollView.contentSize.height > scrollView.bounds.height
+        if !contentExceedsViewport {
+            return projectedMaxOffset > 0.5
+        }
+
+        let distanceFromProjectedBottom = projectedMaxOffset - scrollView.contentOffset.y
+        return distanceFromProjectedBottom < threshold
     }
     
     @objc private func keyboardWillShow(_ notification: Notification) {
@@ -220,15 +238,15 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
         onKeyboardMetricsChanged?(newKeyboardHeight, duration, curveValue)
         guard let scrollView = scrollView else { return }
         
-        // Only do scroll-to-bottom logic on INITIAL keyboard show, not on subsequent height changes
+        // Only do certain bookkeeping on initial show, but scroll adjustment is driven by `shouldAdjust`.
         let isInitialShow = !isKeyboardVisible
         isKeyboardVisible = true
         
-        // Check if at bottom BEFORE animation (only on initial show)
+        // Decide once for this open based on the projected keyboard-covered area.
+        // When pinned (runway active + enforced), `shouldAdjustScrollForKeyboard` returns false.
+        let shouldAdjust = shouldAdjustScrollForKeyboard(scrollView, keyboardHeight: newKeyboardHeight)
         if isInitialShow {
-            // When pinned (runway active), don't treat this as "at bottom" for keyboard open behavior,
-            // otherwise we'll pull the pinned content down by scrolling to a non-runway maxOffset.
-            wasAtBottom = shouldAdjustScrollForKeyboard(scrollView, keyboardHeight: newKeyboardHeight)
+            wasAtBottom = shouldAdjust
         }
         keyboardHeight = newKeyboardHeight
         
@@ -244,8 +262,8 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
                 // Update content inset
                 self.updateContentInset(preserveScrollPosition: self.isPinActive)
                 
-                // Scroll to bottom INSIDE animation block - ONLY on initial keyboard show
-                if isInitialShow && self.wasAtBottom {
+                // Scroll to bottom INSIDE animation block if we want content above the keyboard.
+                if shouldAdjust {
                     let contentHeight = scrollView.contentSize.height
                     let scrollViewHeight = scrollView.bounds.height
                     let bottomInset = scrollView.contentInset.bottom
@@ -253,7 +271,13 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
                     scrollView.contentOffset = CGPoint(x: 0, y: maxOffset)
                 }
             },
-            completion: nil
+            completion: { _ in
+                // The scroll view can clamp the in-animation `contentOffset` because the new `contentInset`
+                // hasn't fully taken effect yet. Re-apply once at the end.
+                if shouldAdjust {
+                    self.scrollToBottom(animated: false)
+                }
+            }
         )
     }
     
@@ -264,7 +288,7 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
         else { return }
         
         onKeyboardMetricsChanged?(0, duration, curveValue)
-        guard scrollView != nil else { return }
+        guard let scrollView = scrollView else { return }
 
         keyboardHeight = 0
         isKeyboardVisible = false  // Reset flag when keyboard hides
@@ -279,7 +303,11 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
             options: animationOptions,
             animations: {
                 // If we're about to pin, keep the visible content stable while the keyboard animates out.
-                self.updateContentInset(preserveScrollPosition: self.shouldPreserveScrollDuringInsetUpdates)
+                // Also preserve when content doesn't exceed the viewport, otherwise inset changes can
+                // "pull" the content down as the keyboard closes.
+                let contentExceedsViewport = scrollView.contentSize.height > scrollView.bounds.height
+                let preserve = self.shouldPreserveScrollDuringInsetUpdates || !contentExceedsViewport
+                self.updateContentInset(preserveScrollPosition: preserve)
             },
             completion: { _ in
                 self.isKeyboardHiding = false
@@ -335,7 +363,11 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
                     scrollView.contentOffset = CGPoint(x: 0, y: maxOffset)
                 }
             },
-            completion: nil
+            completion: { _ in
+                if shouldAdjust {
+                    self.scrollToBottom(animated: false)
+                }
+            }
         )
     }
     
