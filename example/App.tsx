@@ -40,10 +40,64 @@ function ChatScreen() {
   const [composerHeight, setComposerHeight] = useState(
     constants.defaultMinHeight
   );
+  const [composerInstanceKey, setComposerInstanceKey] = useState(0);
+  const [composerAutoFocus, setComposerAutoFocus] = useState(false);
 
   const handleHeightChange = useCallback((height: number) => {
     setComposerHeight(height);
   }, []);
+
+  const buildReproAssistantText = useCallback(() => {
+    const lines = Array.from(
+      { length: 18 },
+      (_, i) =>
+        `Line ${
+          i + 1
+        }: This is a fixed-height repro line to land just under scrollable.`
+    );
+
+    return [
+      "Repro message: intended to be tall but not scrollable before keyboard.",
+      "(If it scrolls on your device, reduce line count; if too short, increase.)",
+      "",
+      ...lines,
+    ].join("\n");
+  }, []);
+
+  const triggerComposerFocus = useCallback(() => {
+    setComposerAutoFocus(true);
+    setComposerInstanceKey((k) => k + 1);
+    setTimeout(() => setComposerAutoFocus(false), 250);
+  }, []);
+
+  const runKeyboardOverlayRepro = useCallback(() => {
+    const now = Date.now();
+    const userMessage: Message = {
+      id: `${now}`,
+      text: "repro",
+      role: "user",
+      timestamp: now,
+    };
+
+    const assistantMessage: Message = {
+      id: `${now + 1}`,
+      text: buildReproAssistantText(),
+      role: "assistant",
+      timestamp: now + 1,
+    };
+
+    // Start from a predictable baseline.
+    setMessages([userMessage]);
+
+    setTimeout(() => {
+      setMessages((prev) => [...prev, assistantMessage]);
+    }, 0);
+
+    // Give RN a moment to lay out before focusing.
+    setTimeout(() => {
+      triggerComposerFocus();
+    }, 150);
+  }, [buildReproAssistantText, triggerComposerFocus]);
 
   // Responsive layout
   const isLargeScreen = isTablet || isDesktop;
@@ -80,7 +134,7 @@ function ChatScreen() {
       "Great observation! Notice how the content adjusts as you type. This library handles all the edge cases: keyboard show/hide, input growing, maintaining scroll position, and more.",
       "Thanks for trying out the keyboard composer! This demonstrates ChatGPT-style pin-to-top behavior where new messages appear at the top with room for the response to stream in below.",
       "Here’s a deliberately super long streamed response for stress-testing scroll pinning, keyboard transitions, and layout thrash under continuous content growth. We want to confirm that when the user presses send, the keyboard dismiss animation and the pin-to-top scroll feel like a single, consistent motion — not a snap down and then a scroll up. While this message streams in word-by-word, watch for subtle jitter in the pinned position: the content should remain visually anchored at the pinned offset without fighting the user’s scroll gestures. Also verify that the scroll-to-bottom button logic stays stable (no flashing) and that scroll indicator insets don’t jump unexpectedly. If you rotate the device, change dynamic type size, or trigger safe-area changes, the pinned behavior should remain predictable and shouldn’t reset into a broken state. Finally, confirm that the animation timing is consistent between the 2nd message and later messages — it should not feel like it “speeds up” as more messages arrive; instead, each pin should feel smooth, predictable, and native.",
-      "Another super long response to test sustained streaming over a longer duration. This one is meant to simulate a multi-paragraph assistant output where the layout repeatedly recalculates heights and content sizes. As this streams, pay attention to three things: first, whether the pinned offset is enforced gently (no micro-snaps every frame), second, whether the scroll view maintains its intended runway behavior (space below for streaming without leaving weird blank gaps above), and third, whether keyboard hide/show transitions remain coherent if you quickly focus the composer again mid-stream. Try sending multiple messages back-to-back, try sending while the keyboard is already hiding, and try interrupting with a manual scroll. The goal is that the UI never looks like it’s moving the content the “wrong way” — it should either stay pinned and stable, or clearly hand control over to the user when they interact. This message is intentionally verbose so you can reproduce edge cases that only show up when the scroll view content grows for a long time."
+      "Another super long response to test sustained streaming over a longer duration. This one is meant to simulate a multi-paragraph assistant output where the layout repeatedly recalculates heights and content sizes. As this streams, pay attention to three things: first, whether the pinned offset is enforced gently (no micro-snaps every frame), second, whether the scroll view maintains its intended runway behavior (space below for streaming without leaving weird blank gaps above), and third, whether keyboard hide/show transitions remain coherent if you quickly focus the composer again mid-stream. Try sending multiple messages back-to-back, try sending while the keyboard is already hiding, and try interrupting with a manual scroll. The goal is that the UI never looks like it’s moving the content the “wrong way” — it should either stay pinned and stable, or clearly hand control over to the user when they interact. This message is intentionally verbose so you can reproduce edge cases that only show up when the scroll view content grows for a long time.",
     ];
     // Use the last (long) response for testing, or random for variety
     const fullResponse = responses[responses.length - 1]; // Always use long response for testing
@@ -274,8 +328,10 @@ function ChatScreen() {
               ]}
             >
               <KeyboardComposer
+                key={composerInstanceKey}
                 style={{ flex: 1 }}
                 placeholder="Ask anything"
+                autoFocus={composerAutoFocus}
                 onSend={handleSend}
                 onHeightChange={handleHeightChange}
                 minHeight={constants.defaultMinHeight}
@@ -315,6 +371,18 @@ const styles = StyleSheet.create({
   headerSubtitle: {
     textAlign: "center",
     marginTop: 2,
+  },
+  debugRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 8,
+    marginTop: 10,
+  },
+  debugButton: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
   },
   chatArea: {
     flex: 1,

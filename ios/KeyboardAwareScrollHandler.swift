@@ -23,11 +23,6 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
     private var isKeyboardHiding: Bool = false
     private let dismissKeyboardVelocityThreshold: CGFloat = -1.2
 
-    // When pin-to-top is active we typically keep the pinned offset stable and block
-    // keyboard-driven scroll adjustments. However, for short-but-tall content (no scroll range
-    // before keyboard), opening the keyboard can introduce a scroll range and otherwise cover
-    // content. This flag temporarily allows keyboard-driven adjustment while keeping pin state.
-    private var allowKeyboardAdjustWhilePinned: Bool = false
 
     // Pin-to-top + runway state
     private enum PinState {
@@ -74,6 +69,54 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
     private var isPinnedOrRunwayActive: Bool {
         isPinActive || runwayInset > 0
     }
+
+#if DEBUG
+    private func debugPinState() -> String {
+        switch pinState {
+        case .idle:
+            return "idle"
+        case .armed:
+            return "armed"
+        case .deferred:
+            return "deferred"
+        case .animating:
+            return "animating"
+        case .pinned(_, let enforce):
+            return enforce ? "pinned(enforce)" : "pinned(relaxed)"
+        }
+    }
+
+    private func debugLog(_ event: String, extra: String? = nil) {
+        guard let sv = scrollView else {
+            let extraValue = extra ?? ""
+            print("[KeyboardAwareScrollHandler] \(event) sv=nil \(extraValue)")
+            return
+        }
+
+        let contentH = sv.contentSize.height
+        let viewportH = sv.bounds.height
+        let insetB = sv.contentInset.bottom
+        let adjustedTop = sv.adjustedContentInset.top
+        let offsetY = sv.contentOffset.y
+        let rawMaxOffset = contentH - viewportH + insetB
+        let maxOffset = max(0, rawMaxOffset)
+
+        let extraText = extra.map { " \($0)" } ?? ""
+        print(
+            "[KeyboardAwareScrollHandler] \(event) kb=\(String(format: "%.1f", keyboardHeight))" +
+                " contentH=\(String(format: "%.1f", contentH))" +
+                " viewportH=\(String(format: "%.1f", viewportH))" +
+                " insetB=\(String(format: "%.1f", insetB))" +
+                " adjustedTop=\(String(format: "%.1f", adjustedTop))" +
+                " offsetY=\(String(format: "%.1f", offsetY))" +
+                " maxOffset=\(String(format: "%.1f", maxOffset))" +
+                " pin=\(debugPinState())" +
+                " pinnedOffset=\(String(format: "%.1f", pinnedOffset))" +
+                " runway=\(String(format: "%.1f", runwayInset))" +
+                extraText
+        )
+    }
+#endif
 
     // NOTE: We intentionally avoid trying to animate individual message views here.
     // With a generic UIScrollView containing React Native-managed subviews, reliably finding
@@ -149,13 +192,9 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
         let rawMaxOffset = contentH - viewportH + baseInset
         runwayInset = max(0, pinnedOffset - rawMaxOffset)
 
-        // Only clear pin state when the keyboard is closed.
-        // During keyboard open/close, baseInset changes can temporarily drive runwayInset to 0
-        // even though we still want to preserve pin state and restore it on close.
-        if runwayInset == 0, keyboardHeight <= 0.5 {
-            pinnedOffset = 0
-            pinState = .idle
-        }
+        // Important: never auto-clear pin just because runway becomes 0.
+        // Keyboard inset changes can collapse runway without meaning the pin is "consumed".
+        // Pin state is cleared explicitly (disable) or by higher-level pin/runway lifecycle.
     }
     
     /// Get safe area bottom from window
@@ -198,77 +237,51 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
     }
 
     private func shouldAdjustScrollForKeyboard(_ scrollView: UIScrollView, keyboardHeight: CGFloat) -> Bool {
-        // If the user is manually scrolling (pinned but not enforcing), allow the keyboard adjustment.
-        let pinBlocksKeyboardAdjust: Bool = {
-            switch self.pinState {
-            case .pinned(_, let enforce):
-                return enforce
-            case .animating:
-                return true
-            case .idle, .armed, .deferred:
-                return false
+        // Compute "should adjust" based on projected post-keyboard scroll range.
+        // This avoids iOS clamping when the scroll range transitions 0 → >0 during the keyboard animation.
+        let contentH = scrollView.contentSize.height
+        let viewportH = scrollView.bounds.height
+        guard viewportH > 0 else { return false }
+
+        let currentRawMaxOffset = contentH - viewportH + scrollView.contentInset.bottom
+        let currentMaxOffset = max(0, currentRawMaxOffset)
+
+        let composerKeyboardGap: CGFloat = 10
+        let projectedBottomInset = baseBottomInset + keyboardHeight + composerKeyboardGap
+        let projectedRawMaxOffset = contentH - viewportH + projectedBottomInset
+        let projectedMaxOffset = max(0, projectedRawMaxOffset)
+
+        let shouldAdjustIgnoringPin: Bool = {
+            if currentMaxOffset <= 0.5 {
+                return projectedMaxOffset > 0.5
             }
+            let threshold = max(140, min(520, keyboardHeight + 80))
+            return isNearBottom(scrollView, threshold: threshold)
         }()
-        guard !pinBlocksKeyboardAdjust else { return false }
 
-        // If the content isn't currently scrollable, `isNearBottom(...)` will always be true.
-        // However, when the keyboard opens we increase the bottom inset, which can *create* a
-        // scroll range (0 -> >0). In that case, we still need to adjust so content isn't covered.
-        //
-        // Project the post-keyboard max offset so we can decide correctly.
-        let minBottomPadding: CGFloat = 16
-        let composerKeyboardGap: CGFloat = 10
-        let bottomOffset = max(safeAreaBottom, minBottomPadding)
-        let projectedBottomInset = baseBottomInset + keyboardHeight + composerKeyboardGap
-        let projectedMaxOffset = max(
-            0,
-            scrollView.contentSize.height - scrollView.bounds.height + projectedBottomInset
-        )
-
-        let currentlyScrollable = scrollView.contentSize.height > scrollView.bounds.height
-        if !currentlyScrollable {
-            // If the keyboard would introduce scroll range, we must adjust.
-            // (If it wouldn't, nothing can be covered anyway.)
-            return projectedMaxOffset > 0.5
+        // Guardrail (supported UX): never do keyboard-driven scroll adjustments while pin is animating
+        // or while pinned+enforced. Your app dismisses the keyboard on send, so keyboard-open-while-pinned
+        // is intentionally not supported.
+        switch pinState {
+        case .animating:
+            return false
+        case .pinned(_, let enforce) where enforce:
+            return false
+        default:
+            break
         }
 
-        // If content is scrollable, treat the "danger zone" (content close enough to be covered)
-        // as "near bottom" so we keep content above the keyboard.
-        let threshold = max(140, min(520, keyboardHeight + 80))
-        return isNearBottom(scrollView, threshold: threshold)
-    }
 
-    private func shouldAdjustScrollForKeyboardIgnoringPin(_ scrollView: UIScrollView, keyboardHeight: CGFloat) -> Bool {
-        // Same logic as `shouldAdjustScrollForKeyboard`, but ignores pin-state blocking.
-        // Used to decide if we should temporarily allow keyboard adjustment while pinned.
-        let minBottomPadding: CGFloat = 16
-        let composerKeyboardGap: CGFloat = 10
-        let _ = max(safeAreaBottom, minBottomPadding)
-
-        let projectedBottomInset = baseBottomInset + keyboardHeight + composerKeyboardGap
-        let projectedMaxOffset = max(
-            0,
-            scrollView.contentSize.height - scrollView.bounds.height + projectedBottomInset
+#if DEBUG
+        debugLog(
+            "shouldAdjustScrollForKeyboard",
+            extra: "kh=\(String(format: "%.1f", keyboardHeight)) currentMax=\(String(format: "%.1f", currentMaxOffset)) projectedMax=\(String(format: "%.1f", projectedMaxOffset))"
         )
+#endif
 
-        let currentlyScrollable = scrollView.contentSize.height > scrollView.bounds.height
-        if !currentlyScrollable {
-            return projectedMaxOffset > 0.5
-        }
-
-        let threshold = max(140, min(520, keyboardHeight + 80))
-        return isNearBottom(scrollView, threshold: threshold)
+        return shouldAdjustIgnoringPin
     }
 
-    private func projectedRunwayAfterKeyboardOpens(_ scrollView: UIScrollView, keyboardHeight: CGFloat) -> CGFloat {
-        // How much runway would remain if we applied the keyboard-open base inset (but *not* runway)?
-        // If this goes to ~0, the keyboard would start overlapping real content unless we allow
-        // keyboard-driven scroll adjustments even while pinned.
-        let composerKeyboardGap: CGFloat = 10
-        let projectedBottomInset = baseBottomInset + keyboardHeight + composerKeyboardGap
-        let projectedRawMaxOffset = scrollView.contentSize.height - scrollView.bounds.height + projectedBottomInset
-        return max(0, pinnedOffset - projectedRawMaxOffset)
-    }
     
     @objc private func keyboardWillShow(_ notification: Notification) {
         guard let userInfo = notification.userInfo,
@@ -285,36 +298,11 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
         let isInitialShow = !isKeyboardVisible
         isKeyboardVisible = true
         
-        // Decide whether we need to keep content above the keyboard.
-        // If we're pinned/enforcing, we may temporarily allow the keyboard adjustment
-        // (without dropping pin state) for short-but-tall content.
-        let shouldAdjustIgnoringPin = shouldAdjustScrollForKeyboardIgnoringPin(scrollView, keyboardHeight: newKeyboardHeight)
-
-        let isPinnedEnforcing: Bool = {
-            if case .pinned(_, let enforce) = pinState { return enforce }
-            return false
-        }()
-
-        if isPinnedEnforcing {
-            // Only allow the keyboard to override the pin when the keyboard would consume
-            // the runway (i.e. there wouldn't be enough empty runway left to absorb the keyboard).
-            let projectedRunway = projectedRunwayAfterKeyboardOpens(scrollView, keyboardHeight: newKeyboardHeight)
-            if projectedRunway <= 0.5 && shouldAdjustIgnoringPin {
-                allowKeyboardAdjustWhilePinned = true
-            } else {
-                allowKeyboardAdjustWhilePinned = false
-            }
-        } else {
-            allowKeyboardAdjustWhilePinned = false
-        }
-
-        let shouldAdjust = allowKeyboardAdjustWhilePinned
-            ? shouldAdjustIgnoringPin
-            : shouldAdjustScrollForKeyboard(scrollView, keyboardHeight: newKeyboardHeight)
-        // Preserve the existing meaning of `wasAtBottom` for this show cycle.
+        // Check if at bottom BEFORE animation (only on initial show)
         if isInitialShow {
-            // When pinned (runway active), shouldAdjustScrollForKeyboard will return false.
-            wasAtBottom = shouldAdjust
+            // When pinned (runway active), don't treat this as "at bottom" for keyboard open behavior,
+            // otherwise we'll pull the pinned content down by scrolling to a non-runway maxOffset.
+            wasAtBottom = shouldAdjustScrollForKeyboard(scrollView, keyboardHeight: newKeyboardHeight)
         }
         keyboardHeight = newKeyboardHeight
         
@@ -322,16 +310,20 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
         // The curve value (7) is converted to animation options by shifting left 16 bits
         let animationOptions = UIView.AnimationOptions(rawValue: curveValue << 16)
         
+
         UIView.animate(
             withDuration: duration,
             delay: 0,
             options: animationOptions,
             animations: {
-                // Update content inset
-                self.updateContentInset(preserveScrollPosition: self.isPinActive)
+                // Update content inset.
+                // If we are going to adjust the offset during this transition, don't also "preserve"
+                // the old offset here (that causes the down→up snap as preserve fights scrollToBottom).
+                let preserveDuringShow = self.isPinActive && !(isInitialShow && self.wasAtBottom)
+                self.updateContentInset(preserveScrollPosition: preserveDuringShow)
                 
-                // Scroll inside the animation block to match the keyboard timing.
-                if shouldAdjust {
+                // Scroll to bottom INSIDE animation block - ONLY on initial keyboard show
+                if isInitialShow && self.wasAtBottom {
                     let contentHeight = scrollView.contentSize.height
                     let scrollViewHeight = scrollView.bounds.height
                     let bottomInset = scrollView.contentInset.bottom
@@ -340,10 +332,15 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
                 }
             },
             completion: { _ in
-                // iOS can clamp contentOffset writes while insets are animating, especially when the
-                // keyboard introduces a scroll range (0 -> >0). Re-apply at the end to guarantee
-                // the final position is correct.
-                if shouldAdjust {
+#if DEBUG
+                self.debugLog(
+                    "keyboardWillShow.completion",
+                    extra: "isInitial=\(isInitialShow) wasAtBottom=\(self.wasAtBottom)"
+                )
+#endif
+                // Re-apply after the inset change has "settled" to avoid iOS clamping
+                // when the scroll range transitions from 0 → >0 during the keyboard animation.
+                if isInitialShow && self.wasAtBottom {
                     self.scrollToBottom(animated: false)
                 }
             }
@@ -357,7 +354,7 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
         else { return }
         
         onKeyboardMetricsChanged?(0, duration, curveValue)
-        guard let scrollView = scrollView else { return }
+        guard scrollView != nil else { return }
 
         keyboardHeight = 0
         isKeyboardVisible = false  // Reset flag when keyboard hides
@@ -371,26 +368,12 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
             delay: 0,
             options: animationOptions,
             animations: {
-                // Keep visible content stable while the keyboard animates out.
-                // Also preserve for short/non-scrollable content, otherwise inset changes can
-                // "pull" content down and create a two-phase motion.
-                let contentExceedsViewport = scrollView.contentSize.height > scrollView.bounds.height
-                let preserve = self.shouldPreserveScrollDuringInsetUpdates || !contentExceedsViewport
-                self.updateContentInset(preserveScrollPosition: preserve)
-
-                // If we allowed keyboard-driven adjustment while pinned, restore to the pinned offset
-                // during the keyboard close animation (so content moves down in sync with the keyboard).
-                if self.allowKeyboardAdjustWhilePinned,
-                   let sv = self.scrollView,
-                   case .pinned = self.pinState {
-                    sv.contentOffset = CGPoint(x: sv.contentOffset.x, y: self.pinnedOffset)
-                }
+                // If we're about to pin, keep the visible content stable while the keyboard animates out.
+                self.updateContentInset(preserveScrollPosition: self.shouldPreserveScrollDuringInsetUpdates)
             },
             completion: { _ in
                 self.isKeyboardHiding = false
 
-                // End the temporary allowance once the keyboard is fully hidden.
-                self.allowKeyboardAdjustWhilePinned = false
 
                 // If content was appended while the keyboard was still open, finish pinning after it closes.
                 if case .deferred(let messageStartY, let contentHeightAfter) = self.pinState {
@@ -424,29 +407,7 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
         let wasVisible = isKeyboardVisible
         keyboardHeight = newKeyboardHeight
         isKeyboardVisible = newKeyboardHeight > 0.5
-
-        let shouldAdjustIgnoringPin = shouldAdjustScrollForKeyboardIgnoringPin(scrollView, keyboardHeight: newKeyboardHeight)
-
-        let isPinnedEnforcing: Bool = {
-            if case .pinned(_, let enforce) = pinState { return enforce }
-            return false
-        }()
-
-        if isPinnedEnforcing {
-            let projectedRunway = projectedRunwayAfterKeyboardOpens(scrollView, keyboardHeight: newKeyboardHeight)
-            if projectedRunway <= 0.5 && shouldAdjustIgnoringPin {
-                allowKeyboardAdjustWhilePinned = true
-            } else {
-                allowKeyboardAdjustWhilePinned = false
-            }
-        } else {
-            allowKeyboardAdjustWhilePinned = false
-        }
-
-        let shouldAdjust = allowKeyboardAdjustWhilePinned
-            ? shouldAdjustIgnoringPin
-            : shouldAdjustScrollForKeyboard(scrollView, keyboardHeight: newKeyboardHeight)
-
+        let shouldAdjust = shouldAdjustScrollForKeyboard(scrollView, keyboardHeight: newKeyboardHeight)
         if !wasVisible && isKeyboardVisible {
             wasAtBottom = shouldAdjust
         }
@@ -457,7 +418,10 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
             delay: 0,
             options: animationOptions,
             animations: {
-                self.updateContentInset(preserveScrollPosition: self.isPinActive)
+                // If we are going to adjust the offset in this block, do not also preserve the old offset.
+                // Preserving + adjusting in the same keyboard animation is what produces the snap.
+                let preserveDuringFrame = self.isPinActive && !shouldAdjust
+                self.updateContentInset(preserveScrollPosition: preserveDuringFrame)
                 if shouldAdjust {
                     let contentHeight = scrollView.contentSize.height
                     let scrollViewHeight = scrollView.bounds.height
@@ -467,8 +431,19 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
                 }
             },
             completion: { _ in
+#if DEBUG
+                self.debugLog(
+                    "keyboardWillChangeFrame.completion",
+                    extra: "shouldAdjust=\(shouldAdjust)"
+                )
+#endif
                 if shouldAdjust {
-                    self.scrollToBottom(animated: false)
+                    // Avoid a second snap: the animation block already sets the target offset.
+                    // Only re-apply when the scroll range might have been clamped (0 → >0 cases).
+                    // Also skip on keyboard-close frames.
+                    if newKeyboardHeight > 0.5, self.wasAtBottom {
+                        self.scrollToBottom(animated: false)
+                    }
                 }
             }
         )
@@ -521,19 +496,8 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
 
         // Keep runway non-scrollable across keyboard/composer changes by recomputing how much
         // extra inset is needed so that maxOffset == pinnedOffset.
-        //
-        // When `allowKeyboardAdjustWhilePinned` is active, we intentionally compute runway as if
-        // the keyboard were closed. This preserves the runway size (for streaming) while still
-        // letting the keyboard-open baseInset increase the scrollable range so we can push
-        // short content above the keyboard.
         if isPinActive {
-            if allowKeyboardAdjustWhilePinned, keyboardHeight > 0.5 {
-                let bottomOffset = max(safeAreaBottom, minBottomPadding)
-                let runwayBaseInset = baseBottomInset + bottomOffset
-                recomputeRunwayInset(baseInset: runwayBaseInset)
-            } else {
-                recomputeRunwayInset(baseInset: baseInset)
-            }
+            recomputeRunwayInset(baseInset: baseInset)
         }
         
         let totalInset = baseInset + runwayInset
@@ -543,15 +507,10 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
         
         // Restore scroll position if needed (prevents visual jump when not at bottom)
         if let savedOffset = savedOffset {
-            // If we temporarily allowed keyboard adjustment while pinned, never snap back to the pinned
-            // offset during inset updates. We'll restore pinnedOffset explicitly on keyboard close.
-            if allowKeyboardAdjustWhilePinned {
-                scrollView.setContentOffset(savedOffset, animated: false)
-            }
             // When pin-to-top is active, inset changes can race with contentSize growth (streaming),
             // causing a visible "bob" as we restore the old offset then correct back to pinnedOffset.
             // If we're enforcing a pinned offset, always restore directly to the pinned target.
-            else if case .pinned(_, let enforce) = pinState, enforce, isPinnedOrRunwayActive {
+            if case .pinned(_, let enforce) = pinState, enforce, isPinnedOrRunwayActive {
                 scrollView.setContentOffset(CGPoint(x: savedOffset.x, y: pinnedOffset), animated: false)
             }
             // If a pin animation is in-flight, never "lock in" a mid-animation offset.
@@ -567,17 +526,6 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
     
     private func scrollToBottom(animated: Bool) {
         guard let scrollView = scrollView else { return }
-
-        // While we temporarily allow keyboard-driven adjustment while pinned, "bottom" should
-        // mean the real max offset (content above keyboard), not the pinned offset.
-        if allowKeyboardAdjustWhilePinned, keyboardHeight > 0.5 {
-            let contentHeight = scrollView.contentSize.height
-            let scrollViewHeight = scrollView.bounds.height
-            let bottomInset = scrollView.contentInset.bottom
-            let maxOffset = max(0, contentHeight - scrollViewHeight + bottomInset)
-            scrollView.setContentOffset(CGPoint(x: 0, y: maxOffset), animated: animated)
-            return
-        }
 
         // When pin/runway is active, "bottom" should mean the pinned position (top of runway),
         // not the absolute maxOffset which would land in empty runway space.
@@ -628,16 +576,10 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
 
             // Pin is armed first, then executed on the next content growth (user message append).
             if case .armed(let messageStartY) = self.pinState, newSize.height > oldSize.height {
-                // If the keyboard is visible/hiding, computing the pin against the keyboard-open inset
-                // can produce a visible snap when the keyboard finishes closing (especially when content
-                // doesn't exceed the viewport). Defer pin computation until the keyboard is fully hidden.
-                if self.isKeyboardVisible || self.isKeyboardHiding || self.keyboardHeight > 0.5 {
-                    self.pinState = .deferred(messageStartY: messageStartY, contentHeightAfter: newSize.height)
-                    self.updateContentInset(preserveScrollPosition: true)
-                } else {
-                    self.pinState = .idle
-                    self.applyPinAfterSend(messageStartY: messageStartY, contentHeightAfter: newSize.height)
-                }
+                // When a send triggers keyboard dismiss, pin while the keyboard is animating out.
+                // This avoids a two-phase "down then up" motion.
+                self.pinState = .idle
+                self.applyPinAfterSend(messageStartY: messageStartY, contentHeightAfter: newSize.height)
             } else if self.isPinActive && self.runwayInset > 0 && newSize.height > oldSize.height {
                 let growth = newSize.height - oldSize.height
                 self.consumeRunway(by: growth)
@@ -854,7 +796,7 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
         }
         animator.startAnimation()
 
-        // Clearing pinned state (if runway reaches 0) is handled by recomputeRunwayInset.
+        // Clearing pinned state is handled by `consumeRunway` when runway is fully consumed.
     }
 
     private func consumeRunway(by contentGrowth: CGFloat) {
@@ -862,6 +804,14 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
 
         // Content grew (streaming). Recompute runway based on new content size.
         updateContentInset(preserveScrollPosition: true)
+
+        // If runway is fully consumed due to content growth (not keyboard transitions),
+        // drop back to normal non-pinned behavior.
+        if runwayInset <= 0.5, keyboardHeight <= 0.5, !isKeyboardVisible, !isKeyboardHiding {
+            pinnedOffset = 0
+            pinState = .idle
+        }
+
         // During streaming, contentSize can grow many times per second.
         // Coalesce corrections to at most once per runloop to avoid visible snapping.
         schedulePinnedOffsetCorrection(reason: "consumeRunway")

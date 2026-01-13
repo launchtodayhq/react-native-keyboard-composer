@@ -38,6 +38,45 @@ Use the existing example screen in [example/App.tsx](example/App.tsx) with `pinT
 
 ---
 
+## Anti-behaviors / guardrails (avoid these regressions)
+
+These are failure modes we explicitly do **not** want to introduce while fixing the keyboard overlay case.
+
+### Keyboard open/close
+
+- Keyboard opens and bottom content is still covered even though a minimal offset adjustment would keep it visible.
+- Two-phase motion on open (moves, then snaps again at completion) — often from inset/offset clamping.
+- Two-phase motion on close (drops, then snaps) — often from competing “preserve position” + “scroll to bottom” actions.
+- Keyboard open forces scroll-to-bottom when the user is clearly reading older content (scrolled up).
+- Visible clamp/bounce where `contentOffset` briefly hits `0` and then corrects.
+
+### Send / append sequencing
+
+- “Pull down then up” on send (any intermediate re-bottom before pin/runway engages).
+- Send triggers two competing offset changes (e.g. scroll-to-bottom and pin animation both run).
+- Pin applies twice (contentSize observer + keyboard hide completion both execute).
+- Pin anchors to the wrong start point because `messageStartY` is captured before layout/insets have settled.
+
+### Pin-to-top / runway
+
+- Pin state gets cleared just because `runwayInset` computes to `0` during keyboard inset changes (keyboard ≠ runway consumption).
+- While pinned/enforced, keyboard open causes oscillation/jitter (pin correction fighting keyboard/inset animation).
+- User drag while pinned feels sticky (enforcement keeps pulling them back); user interaction must disable enforcement cleanly.
+- Runway becomes scrollable empty space (user can scroll into it).
+- Pin reactivates unexpectedly after user intentionally scrolls away (should require explicit re-arm).
+
+### Composer growth
+
+- Composer height change causes a jump while user is at/near bottom (gap should remain stable).
+- Composer height change adjusts scroll while user is not near bottom (should preserve reading position).
+
+### Scroll-to-bottom button
+
+- Button flickers on keyboard open/close (rapid show/hide due to transient near-bottom computations).
+- Button position lags keyboard animation (moves after the keyboard rather than with it).
+
+---
+
 ## Phase 0 — Repro harness + observability
 
 1. Add a dedicated repro toggle in the example
@@ -183,6 +222,17 @@ Run these on a physical device:
 6. While pinned+streaming: open keyboard mid-stream → close keyboard
 7. Composer auto-grows while keyboard open (type multi-line)
 8. Rotate device while pinned and while keyboard is open
+
+### Guardrails checklist (must also pass)
+
+Confirm none of these regressions are present while running the matrix above:
+
+- No keyboard overlay when content would be covered (push-up works).
+- No two-phase snaps on keyboard open or close.
+- No “pull down then up” on send.
+- No pin state reset caused only by keyboard inset changes.
+- No sticky pin enforcement during user drag.
+- No scroll-to-bottom button flicker/lag during transitions.
 
 ---
 
