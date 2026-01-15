@@ -33,7 +33,10 @@ class KeyboardComposerView: ExpoView {
   }
 
   var editable: Bool = true {
-    didSet { textView.isEditable = editable }
+    didSet {
+      textView.isEditable = editable
+      updateExpandedEditorButtonVisibility()
+    }
   }
 
   var autoFocus: Bool = false {
@@ -47,6 +50,14 @@ class KeyboardComposerView: ExpoView {
   var isStreaming: Bool = false {
     didSet {
       updateButtonAppearance()
+      updateExpandedEditorButtonVisibility()
+    }
+  }
+
+  // When enabled, shows an expand control once maxHeight is reached (iOS only).
+  var expandedEditorEnabled: Bool = false {
+    didSet {
+      updateExpandedEditorButtonVisibility()
     }
   }
 
@@ -64,6 +75,11 @@ class KeyboardComposerView: ExpoView {
   private let textView = UITextView()
   private let placeholderLabel = UILabel()
   private let sendButton = UIButton(type: .system)
+  private let expandButton = UIButton(type: .system)
+
+  private var isExpandedEditorPresented: Bool = false
+  private var expandedDraftText: String = ""
+  private weak var expandedEditorNavigationController: UINavigationController?
 
   // MARK: - Keyboard tracking
   private var lastNotifiedKeyboardHeight: CGFloat = 0
@@ -100,7 +116,8 @@ class KeyboardComposerView: ExpoView {
     textView.font = .systemFont(ofSize: 16)
     textView.backgroundColor = .clear
     textView.textColor = .label
-    textView.textContainerInset = UIEdgeInsets(top: 14, left: 12, bottom: 14, right: 44)
+    // Leave room for the send button (bottom-right) and the expand button (top-right).
+    textView.textContainerInset = UIEdgeInsets(top: 14, left: 12, bottom: 14, right: 56)
     textView.textContainer.lineFragmentPadding = 0
     textView.textContainer.lineBreakMode = .byWordWrapping
     textView.isScrollEnabled = false
@@ -133,6 +150,18 @@ class KeyboardComposerView: ExpoView {
     sendButton.addTarget(self, action: #selector(handleButtonPress), for: .touchUpInside)
     containerView.addSubview(sendButton)
     updateButtonAppearance()
+
+    // Expand-to-editor button (hidden unless enabled + at maxHeight)
+    // Keep the tap target reasonable, but make the icon visually smaller.
+    let expandConfig = UIImage.SymbolConfiguration(pointSize: 13, weight: .semibold)
+    let expandImage = UIImage(systemName: "chevron.up.chevron.down", withConfiguration: expandConfig)
+    expandButton.setImage(expandImage, for: .normal)
+    expandButton.tintColor = .label
+    expandButton.contentEdgeInsets = UIEdgeInsets(top: 7, left: 7, bottom: 7, right: 7)
+    expandButton.isHidden = true
+    expandButton.accessibilityLabel = "Expand editor"
+    expandButton.addTarget(self, action: #selector(handleExpandPress), for: .touchUpInside)
+    containerView.addSubview(expandButton)
 
     setupConstraints()
     updateSendButtonState()
@@ -211,6 +240,11 @@ class KeyboardComposerView: ExpoView {
       width: buttonSize,
       height: buttonSize
     )
+
+    let expandSize: CGFloat = 28
+    let expandX = bounds.width - 36
+    let expandY: CGFloat = 6
+    expandButton.frame = CGRect(x: expandX, y: expandY, width: expandSize, height: expandSize)
     
     if bounds.width != lastBoundsWidth {
       lastBoundsWidth = bounds.width
@@ -287,21 +321,26 @@ class KeyboardComposerView: ExpoView {
     }
   }
 
-  private func handleSend() {
-    guard !textView.text.isEmpty else { return }
-
-    // Haptic feedback
-    let generator = UIImpactFeedbackGenerator(style: .light)
-    generator.impactOccurred()
-
+  private func emitSend(text: String) {
     onSend([
-      "text": textView.text ?? ""
+      "text": text
     ])
 
     NotificationCenter.default.post(
       name: .keyboardComposerDidSend,
       object: self
     )
+  }
+
+  private func handleSend() {
+    let currentText = textView.text ?? ""
+    guard !currentText.isEmpty else { return }
+
+    // Haptic feedback
+    let generator = UIImpactFeedbackGenerator(style: .light)
+    generator.impactOccurred()
+
+    emitSend(text: currentText)
 
     textView.text = ""
     placeholderLabel.isHidden = false
@@ -314,6 +353,94 @@ class KeyboardComposerView: ExpoView {
     let generator = UIImpactFeedbackGenerator(style: .medium)
     generator.impactOccurred()
     onStop([:])
+  }
+
+  private func updateExpandedEditorButtonVisibility() {
+    // Only show when content is tall enough to hit maxHeight. updateHeight() will compute exact visibility.
+    // This method exists to react to prop changes without forcing a full re-measure.
+    DispatchQueue.main.async { [weak self] in
+      self?.updateHeight()
+    }
+  }
+
+  private func nearestViewController() -> UIViewController? {
+    var responder: UIResponder? = self
+    while let current = responder {
+      if let vc = current as? UIViewController {
+        return vc
+      }
+      responder = current.next
+    }
+    return nil
+  }
+
+  @objc private func handleExpandPress() {
+    guard expandedEditorEnabled, editable, !isStreaming else { return }
+    guard !isExpandedEditorPresented else { return }
+    guard let presenter = nearestViewController() else { return }
+
+    isExpandedEditorPresented = true
+    expandedDraftText = textView.text ?? ""
+    textView.resignFirstResponder()
+
+    let editor = ExpandedComposerViewController(initialText: expandedDraftText)
+    editor.onTextChange = { [weak self] text in
+      guard let self else { return }
+      self.expandedDraftText = text
+      self.onChangeText(["text": text])
+    }
+    editor.onDone = { [weak self] finalText in
+      guard let self else { return }
+      self.applyExpandedTextAndDismiss(finalText)
+    }
+    editor.onSend = { [weak self] sendText in
+      guard let self else { return }
+      self.handleExpandedSend(sendText)
+    }
+
+    let nav = UINavigationController(rootViewController: editor)
+    nav.modalPresentationStyle = .pageSheet
+    if #available(iOS 15.0, *) {
+      if let sheet = nav.sheetPresentationController {
+        sheet.detents = [.large()]
+        sheet.prefersGrabberVisible = true
+        sheet.preferredCornerRadius = 18
+      }
+    }
+    nav.presentationController?.delegate = self
+    expandedEditorNavigationController = nav
+    presenter.present(nav, animated: true)
+  }
+
+  private func applyExpandedTextAndDismiss(_ finalText: String) {
+    // Restore text into the composer.
+    textView.text = finalText
+    placeholderLabel.isHidden = !finalText.isEmpty
+    updateHeight()
+    updateSendButtonState()
+
+    isExpandedEditorPresented = false
+    expandedEditorNavigationController = nil
+  }
+
+  private func handleExpandedSend(_ sendText: String) {
+    guard !sendText.isEmpty else { return }
+
+    let generator = UIImpactFeedbackGenerator(style: .light)
+    generator.impactOccurred()
+
+    emitSend(text: sendText)
+
+    // Clear composer text too.
+    textView.text = ""
+    expandedDraftText = ""
+    placeholderLabel.isHidden = false
+    onChangeText(["text": ""])
+    updateHeight()
+    updateSendButtonState()
+
+    isExpandedEditorPresented = false
+    expandedEditorNavigationController = nil
   }
 
   private func updateButtonAppearance() {
@@ -343,6 +470,10 @@ class KeyboardComposerView: ExpoView {
     let size = textView.sizeThatFits(fittingSize)
     let contentHeight = max(size.height, minHeight)
     let newHeight = min(contentHeight, maxHeight)
+
+    let isAtMaxHeight = contentHeight >= (maxHeight - 0.5)
+    let shouldShowExpand = expandedEditorEnabled && editable && !isStreaming && isAtMaxHeight
+    expandButton.isHidden = !shouldShowExpand
     
     let shouldScroll = contentHeight > maxHeight
     if textView.isScrollEnabled != shouldScroll {
@@ -351,9 +482,11 @@ class KeyboardComposerView: ExpoView {
     
     if abs(newHeight - currentHeight) > 0.5 {
       currentHeight = newHeight
-      onHeightChange([
-        "height": newHeight
-      ])
+      if !isExpandedEditorPresented {
+        onHeightChange([
+          "height": newHeight
+        ])
+      }
     }
   }
 
@@ -392,6 +525,90 @@ class KeyboardComposerView: ExpoView {
 
 extension Notification.Name {
   static let keyboardComposerDidSend = Notification.Name("KeyboardComposerDidSend")
+}
+
+// MARK: - Expanded Editor
+
+private final class ExpandedComposerViewController: UIViewController, UITextViewDelegate {
+  var onTextChange: ((String) -> Void)?
+  var onDone: ((String) -> Void)?
+  var onSend: ((String) -> Void)?
+
+  private let textView = UITextView()
+  private let initialText: String
+
+  init(initialText: String) {
+    self.initialText = initialText
+    super.init(nibName: nil, bundle: nil)
+  }
+
+  @available(*, unavailable)
+  required init?(coder: NSCoder) {
+    fatalError("init(coder:) has not been implemented")
+  }
+
+  override func viewDidLoad() {
+    super.viewDidLoad()
+
+    view.backgroundColor = .systemBackground
+    navigationItem.title = "Edit"
+
+    navigationItem.leftBarButtonItem = UIBarButtonItem(
+      title: "Done",
+      style: .done,
+      target: self,
+      action: #selector(handleDone)
+    )
+
+    navigationItem.rightBarButtonItem = UIBarButtonItem(
+      title: "Send",
+      style: .done,
+      target: self,
+      action: #selector(handleSend)
+    )
+
+    textView.delegate = self
+    textView.font = .systemFont(ofSize: 16)
+    textView.backgroundColor = .clear
+    textView.textColor = .label
+    textView.text = initialText
+    textView.alwaysBounceVertical = true
+    textView.keyboardDismissMode = .interactive
+    textView.textContainerInset = UIEdgeInsets(top: 16, left: 16, bottom: 16, right: 16)
+    view.addSubview(textView)
+  }
+
+  override func viewDidLayoutSubviews() {
+    super.viewDidLayoutSubviews()
+    textView.frame = view.bounds
+  }
+
+  override func viewDidAppear(_ animated: Bool) {
+    super.viewDidAppear(animated)
+    textView.becomeFirstResponder()
+  }
+
+  func textViewDidChange(_ textView: UITextView) {
+    onTextChange?(textView.text ?? "")
+  }
+
+  @objc private func handleDone() {
+    onDone?(textView.text ?? "")
+    dismiss(animated: true)
+  }
+
+  @objc private func handleSend() {
+    onSend?(textView.text ?? "")
+    dismiss(animated: true)
+  }
+}
+
+extension KeyboardComposerView: UIAdaptivePresentationControllerDelegate {
+  func presentationControllerDidDismiss(_ presentationController: UIPresentationController) {
+    // User dismissed via swipe.
+    guard isExpandedEditorPresented else { return }
+    applyExpandedTextAndDismiss(expandedDraftText)
+  }
 }
 
 // MARK: - UITextViewDelegate

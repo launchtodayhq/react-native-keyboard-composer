@@ -40,64 +40,11 @@ function ChatScreen() {
   const [composerHeight, setComposerHeight] = useState(
     constants.defaultMinHeight
   );
-  const [composerInstanceKey, setComposerInstanceKey] = useState(0);
-  const [composerAutoFocus, setComposerAutoFocus] = useState(false);
 
   const handleHeightChange = useCallback((height: number) => {
     setComposerHeight(height);
   }, []);
 
-  const buildReproAssistantText = useCallback(() => {
-    const lines = Array.from(
-      { length: 18 },
-      (_, i) =>
-        `Line ${
-          i + 1
-        }: This is a fixed-height repro line to land just under scrollable.`
-    );
-
-    return [
-      "Repro message: intended to be tall but not scrollable before keyboard.",
-      "(If it scrolls on your device, reduce line count; if too short, increase.)",
-      "",
-      ...lines,
-    ].join("\n");
-  }, []);
-
-  const triggerComposerFocus = useCallback(() => {
-    setComposerAutoFocus(true);
-    setComposerInstanceKey((k) => k + 1);
-    setTimeout(() => setComposerAutoFocus(false), 250);
-  }, []);
-
-  const runKeyboardOverlayRepro = useCallback(() => {
-    const now = Date.now();
-    const userMessage: Message = {
-      id: `${now}`,
-      text: "repro",
-      role: "user",
-      timestamp: now,
-    };
-
-    const assistantMessage: Message = {
-      id: `${now + 1}`,
-      text: buildReproAssistantText(),
-      role: "assistant",
-      timestamp: now + 1,
-    };
-
-    // Start from a predictable baseline.
-    setMessages([userMessage]);
-
-    setTimeout(() => {
-      setMessages((prev) => [...prev, assistantMessage]);
-    }, 0);
-
-    // Give RN a moment to lay out before focusing.
-    setTimeout(() => {
-      triggerComposerFocus();
-    }, 150);
-  }, [buildReproAssistantText, triggerComposerFocus]);
 
   // Responsive layout
   const isLargeScreen = isTablet || isDesktop;
@@ -328,14 +275,13 @@ function ChatScreen() {
               ]}
             >
               <KeyboardComposer
-                key={composerInstanceKey}
                 style={{ flex: 1 }}
                 placeholder="Ask anything"
-                autoFocus={composerAutoFocus}
                 onSend={handleSend}
                 onHeightChange={handleHeightChange}
                 minHeight={constants.defaultMinHeight}
                 maxHeight={constants.defaultMaxHeight}
+                expandedEditorEnabled={true}
                 sendButtonEnabled={true}
               />
             </View>
@@ -371,18 +317,6 @@ const styles = StyleSheet.create({
   headerSubtitle: {
     textAlign: "center",
     marginTop: 2,
-  },
-  debugRow: {
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: 8,
-    marginTop: 10,
-  },
-  debugButton: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
   },
   chatArea: {
     flex: 1,

@@ -48,6 +48,10 @@ public class KeyboardComposerModule: Module {
         view.isStreaming = value
       }
 
+      Prop("expandedEditorEnabled") { (view: KeyboardComposerView, value: Bool) in
+        view.expandedEditorEnabled = value
+      }
+
       Events(
         "onChangeText",
         "onSend",
