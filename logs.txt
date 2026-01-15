@@ -1,0 +1,512 @@
+(base) ➜  react-native-keyboard-composer git:(pw/fixes-2) ✗ adb logcat -c; adb logcat -s KeyboardComposerNative
+- waiting for device -
+--------- beginning of main
+01-15 11:25:51.377 31577 31577 W KeyboardComposerNative: Wrapper onLayout changed=true size=1080x2103 childCount=3
+01-15 11:25:51.378 31577 31577 W KeyboardComposerNative: Insets applied safeBottom=45 imeBottom=0 scrollH=2103
+01-15 11:25:51.384 31577 31577 W KeyboardComposerNative: findAndAttachViews sv=ReactScrollView composer=KeyboardComposerView
+01-15 11:25:51.384 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=0 safeBottom=45 gap=24 transY=-69.0
+01-15 11:25:51.384 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=0 safeBottom=45 gap=24 transY=-69.0
+01-15 11:25:51.385 31577 31577 W KeyboardComposerNative: attached svSize=1080x2103 scrollY=0 contentH=48 composerH=0 composerContainer=ReactViewGroup
+01-15 11:25:51.400 31577 31577 W KeyboardComposerNative: updateScrollPadding base=261 runway=0 final=261 scrollY=0 maxScroll=0
+01-15 11:25:51.402 31577 31577 W KeyboardComposerNative: updateScrollPadding base=261 runway=0 final=261 scrollY=0 maxScroll=0
+01-15 11:25:51.403 31577 31577 W KeyboardComposerNative: scrollChanged y=0 maxScroll=0 pinned=false runway=0
+01-15 11:25:59.822 31577 31577 W KeyboardComposerNative: Composer EditText ACTION_DOWN shown=true enabled=true hint='Ask anything'
+01-15 11:25:59.852 31577 31577 W KeyboardComposerNative: Composer EditText focus=true shown=true enabled=true textLen=0
+01-15 11:25:59.914 31577 31577 W KeyboardComposerNative: IME onPrepare opening=true keyboardH=0 wasAtBottom=false scrollY=0 maxScroll=0 childH=48 svH=2103
+01-15 11:25:59.918 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=1026 safeBottom=45 gap=24 transY=-1050.0
+01-15 11:25:59.918 31577 31577 W KeyboardComposerNative: updateScrollPadding base=1242 runway=0 final=1242 scrollY=0 maxScroll=0
+01-15 11:25:59.918 31577 31577 W KeyboardComposerNative: Insets applied safeBottom=45 imeBottom=1026 scrollH=2103
+01-15 11:25:59.923 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=0 safeBottom=45 gap=24 transY=-69.0
+01-15 11:25:59.923 31577 31577 W KeyboardComposerNative: IME onProgress kb=0 eff=0 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:25:59.926 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=0 safeBottom=45 gap=24 transY=-69.0
+01-15 11:25:59.926 31577 31577 W KeyboardComposerNative: IME onProgress kb=0 eff=0 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:25:59.934 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=33 safeBottom=45 gap=24 transY=-69.0
+01-15 11:25:59.934 31577 31577 W KeyboardComposerNative: IME onProgress kb=33 eff=0 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:25:59.943 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=80 safeBottom=45 gap=24 transY=-104.0
+01-15 11:25:59.943 31577 31577 W KeyboardComposerNative: IME onProgress kb=80 eff=35 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:25:59.951 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=137 safeBottom=45 gap=24 transY=-161.0
+01-15 11:25:59.951 31577 31577 W KeyboardComposerNative: IME onProgress kb=137 eff=92 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:25:59.959 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=213 safeBottom=45 gap=24 transY=-237.0
+01-15 11:25:59.959 31577 31577 W KeyboardComposerNative: IME onProgress kb=213 eff=168 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:25:59.968 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=304 safeBottom=45 gap=24 transY=-328.0
+01-15 11:25:59.968 31577 31577 W KeyboardComposerNative: IME onProgress kb=304 eff=259 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:25:59.976 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=410 safeBottom=45 gap=24 transY=-434.0
+01-15 11:25:59.976 31577 31577 W KeyboardComposerNative: IME onProgress kb=410 eff=365 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:25:59.984 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=492 safeBottom=45 gap=24 transY=-516.0
+01-15 11:25:59.984 31577 31577 W KeyboardComposerNative: IME onProgress kb=492 eff=447 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:25:59.993 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=559 safeBottom=45 gap=24 transY=-583.0
+01-15 11:25:59.993 31577 31577 W KeyboardComposerNative: IME onProgress kb=559 eff=514 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:00.001 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=622 safeBottom=45 gap=24 transY=-646.0
+01-15 11:26:00.001 31577 31577 W KeyboardComposerNative: IME onProgress kb=622 eff=577 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:00.009 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=667 safeBottom=45 gap=24 transY=-691.0
+01-15 11:26:00.009 31577 31577 W KeyboardComposerNative: IME onProgress kb=667 eff=622 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:00.018 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=707 safeBottom=45 gap=24 transY=-731.0
+01-15 11:26:00.018 31577 31577 W KeyboardComposerNative: IME onProgress kb=707 eff=662 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:00.026 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=745 safeBottom=45 gap=24 transY=-769.0
+01-15 11:26:00.026 31577 31577 W KeyboardComposerNative: IME onProgress kb=745 eff=700 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:00.034 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=776 safeBottom=45 gap=24 transY=-800.0
+01-15 11:26:00.034 31577 31577 W KeyboardComposerNative: IME onProgress kb=776 eff=731 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:00.043 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=802 safeBottom=45 gap=24 transY=-826.0
+01-15 11:26:00.043 31577 31577 W KeyboardComposerNative: IME onProgress kb=802 eff=757 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:00.051 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=827 safeBottom=45 gap=24 transY=-851.0
+01-15 11:26:00.051 31577 31577 W KeyboardComposerNative: IME onProgress kb=827 eff=782 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:00.059 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=848 safeBottom=45 gap=24 transY=-872.0
+01-15 11:26:00.059 31577 31577 W KeyboardComposerNative: IME onProgress kb=848 eff=803 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:00.068 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=869 safeBottom=45 gap=24 transY=-893.0
+01-15 11:26:00.068 31577 31577 W KeyboardComposerNative: IME onProgress kb=869 eff=824 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:00.076 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=885 safeBottom=45 gap=24 transY=-909.0
+01-15 11:26:00.076 31577 31577 W KeyboardComposerNative: IME onProgress kb=885 eff=840 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:00.084 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=900 safeBottom=45 gap=24 transY=-924.0
+01-15 11:26:00.085 31577 31577 W KeyboardComposerNative: IME onProgress kb=900 eff=855 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:00.093 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=915 safeBottom=45 gap=24 transY=-939.0
+01-15 11:26:00.093 31577 31577 W KeyboardComposerNative: IME onProgress kb=915 eff=870 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:00.101 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=928 safeBottom=45 gap=24 transY=-952.0
+01-15 11:26:00.101 31577 31577 W KeyboardComposerNative: IME onProgress kb=928 eff=883 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:00.109 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=938 safeBottom=45 gap=24 transY=-962.0
+01-15 11:26:00.109 31577 31577 W KeyboardComposerNative: IME onProgress kb=938 eff=893 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:00.118 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=950 safeBottom=45 gap=24 transY=-974.0
+01-15 11:26:00.118 31577 31577 W KeyboardComposerNative: IME onProgress kb=950 eff=905 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:00.129 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=959 safeBottom=45 gap=24 transY=-983.0
+01-15 11:26:00.129 31577 31577 W KeyboardComposerNative: IME onProgress kb=959 eff=914 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:00.135 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=967 safeBottom=45 gap=24 transY=-991.0
+01-15 11:26:00.135 31577 31577 W KeyboardComposerNative: IME onProgress kb=967 eff=922 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:00.143 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=976 safeBottom=45 gap=24 transY=-1000.0
+01-15 11:26:00.143 31577 31577 W KeyboardComposerNative: IME onProgress kb=976 eff=931 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:00.151 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=982 safeBottom=45 gap=24 transY=-1006.0
+01-15 11:26:00.151 31577 31577 W KeyboardComposerNative: IME onProgress kb=982 eff=937 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:00.159 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=988 safeBottom=45 gap=24 transY=-1012.0
+01-15 11:26:00.159 31577 31577 W KeyboardComposerNative: IME onProgress kb=988 eff=943 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:00.168 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=994 safeBottom=45 gap=24 transY=-1018.0
+01-15 11:26:00.168 31577 31577 W KeyboardComposerNative: IME onProgress kb=994 eff=949 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:00.176 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=999 safeBottom=45 gap=24 transY=-1023.0
+01-15 11:26:00.176 31577 31577 W KeyboardComposerNative: IME onProgress kb=999 eff=954 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:00.184 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=1004 safeBottom=45 gap=24 transY=-1028.0
+01-15 11:26:00.185 31577 31577 W KeyboardComposerNative: IME onProgress kb=1004 eff=959 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:00.193 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=1008 safeBottom=45 gap=24 transY=-1032.0
+01-15 11:26:00.193 31577 31577 W KeyboardComposerNative: IME onProgress kb=1008 eff=963 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:00.201 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=1011 safeBottom=45 gap=24 transY=-1035.0
+01-15 11:26:00.201 31577 31577 W KeyboardComposerNative: IME onProgress kb=1011 eff=966 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:00.209 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=1014 safeBottom=45 gap=24 transY=-1038.0
+01-15 11:26:00.209 31577 31577 W KeyboardComposerNative: IME onProgress kb=1014 eff=969 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:00.218 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=1017 safeBottom=45 gap=24 transY=-1041.0
+01-15 11:26:00.218 31577 31577 W KeyboardComposerNative: IME onProgress kb=1017 eff=972 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:00.226 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=1019 safeBottom=45 gap=24 transY=-1043.0
+01-15 11:26:00.226 31577 31577 W KeyboardComposerNative: IME onProgress kb=1019 eff=974 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:00.234 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=1021 safeBottom=45 gap=24 transY=-1045.0
+01-15 11:26:00.234 31577 31577 W KeyboardComposerNative: IME onProgress kb=1021 eff=976 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:00.243 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=1023 safeBottom=45 gap=24 transY=-1047.0
+01-15 11:26:00.243 31577 31577 W KeyboardComposerNative: IME onProgress kb=1023 eff=978 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:00.251 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=1024 safeBottom=45 gap=24 transY=-1048.0
+01-15 11:26:00.251 31577 31577 W KeyboardComposerNative: IME onProgress kb=1024 eff=979 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:00.259 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=1024 safeBottom=45 gap=24 transY=-1048.0
+01-15 11:26:00.260 31577 31577 W KeyboardComposerNative: IME onProgress kb=1024 eff=979 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:00.268 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=1025 safeBottom=45 gap=24 transY=-1049.0
+01-15 11:26:00.268 31577 31577 W KeyboardComposerNative: IME onProgress kb=1025 eff=980 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:00.277 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=1026 safeBottom=45 gap=24 transY=-1050.0
+01-15 11:26:00.277 31577 31577 W KeyboardComposerNative: IME onProgress kb=1026 eff=981 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:00.277 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=1026 safeBottom=45 gap=24 transY=-1050.0
+01-15 11:26:00.277 31577 31577 W KeyboardComposerNative: updateScrollPadding base=1242 runway=0 final=1242 scrollY=0 maxScroll=0
+01-15 11:26:00.277 31577 31577 W KeyboardComposerNative: IME onEnd kb=1026 eff=981 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:01.715 31577 31577 W KeyboardComposerNative: requestPin pending startY=48 contentH=48 scrollY=0
+01-15 11:26:01.721 31577 31577 W KeyboardComposerNative: IME onPrepare opening=false keyboardH=1026 wasAtBottom=false scrollY=0 maxScroll=0 childH=48 svH=2103
+01-15 11:26:01.723 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=0 safeBottom=45 gap=24 transY=-69.0
+01-15 11:26:01.723 31577 31577 W KeyboardComposerNative: updateScrollPadding base=261 runway=0 final=261 scrollY=0 maxScroll=0
+01-15 11:26:01.723 31577 31577 W KeyboardComposerNative: Insets applied safeBottom=45 imeBottom=0 scrollH=2103
+01-15 11:26:01.726 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=1026 safeBottom=45 gap=24 transY=-1050.0
+01-15 11:26:01.726 31577 31577 W KeyboardComposerNative: IME onProgress kb=1026 eff=981 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:01.732 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=1026 safeBottom=45 gap=24 transY=-1050.0
+01-15 11:26:01.732 31577 31577 W KeyboardComposerNative: IME onProgress kb=1026 eff=981 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:01.738 31577 31577 W KeyboardComposerNative: contentSizeChange pendingPin contentH=262 keyboardH=1026
+01-15 11:26:01.739 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=1023 safeBottom=45 gap=24 transY=-1047.0
+01-15 11:26:01.740 31577 31577 W KeyboardComposerNative: IME onProgress kb=1023 eff=978 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:01.743 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=1015 safeBottom=45 gap=24 transY=-1039.0
+01-15 11:26:01.743 31577 31577 W KeyboardComposerNative: IME onProgress kb=1015 eff=970 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:01.751 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=997 safeBottom=45 gap=24 transY=-1021.0
+01-15 11:26:01.751 31577 31577 W KeyboardComposerNative: IME onProgress kb=997 eff=952 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:01.759 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=970 safeBottom=45 gap=24 transY=-994.0
+01-15 11:26:01.760 31577 31577 W KeyboardComposerNative: IME onProgress kb=970 eff=925 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:01.768 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=932 safeBottom=45 gap=24 transY=-956.0
+01-15 11:26:01.768 31577 31577 W KeyboardComposerNative: IME onProgress kb=932 eff=887 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:01.776 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=870 safeBottom=45 gap=24 transY=-894.0
+01-15 11:26:01.776 31577 31577 W KeyboardComposerNative: IME onProgress kb=870 eff=825 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:01.784 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=797 safeBottom=45 gap=24 transY=-821.0
+01-15 11:26:01.784 31577 31577 W KeyboardComposerNative: IME onProgress kb=797 eff=752 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:01.793 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=714 safeBottom=45 gap=24 transY=-738.0
+01-15 11:26:01.793 31577 31577 W KeyboardComposerNative: IME onProgress kb=714 eff=669 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:01.801 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=618 safeBottom=45 gap=24 transY=-642.0
+01-15 11:26:01.801 31577 31577 W KeyboardComposerNative: IME onProgress kb=618 eff=573 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:01.809 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=540 safeBottom=45 gap=24 transY=-564.0
+01-15 11:26:01.809 31577 31577 W KeyboardComposerNative: IME onProgress kb=540 eff=495 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:01.818 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=471 safeBottom=45 gap=24 transY=-495.0
+01-15 11:26:01.818 31577 31577 W KeyboardComposerNative: IME onProgress kb=471 eff=426 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:01.826 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=403 safeBottom=45 gap=24 transY=-427.0
+01-15 11:26:01.826 31577 31577 W KeyboardComposerNative: IME onProgress kb=403 eff=358 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:01.834 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=353 safeBottom=45 gap=24 transY=-377.0
+01-15 11:26:01.834 31577 31577 W KeyboardComposerNative: IME onProgress kb=353 eff=308 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:01.843 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=308 safeBottom=45 gap=24 transY=-332.0
+01-15 11:26:01.843 31577 31577 W KeyboardComposerNative: IME onProgress kb=308 eff=263 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:01.851 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=265 safeBottom=45 gap=24 transY=-289.0
+01-15 11:26:01.851 31577 31577 W KeyboardComposerNative: IME onProgress kb=265 eff=220 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:01.859 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=229 safeBottom=45 gap=24 transY=-253.0
+01-15 11:26:01.859 31577 31577 W KeyboardComposerNative: IME onProgress kb=229 eff=184 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:01.868 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=199 safeBottom=45 gap=24 transY=-223.0
+01-15 11:26:01.868 31577 31577 W KeyboardComposerNative: IME onProgress kb=199 eff=154 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:01.876 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=170 safeBottom=45 gap=24 transY=-194.0
+01-15 11:26:01.876 31577 31577 W KeyboardComposerNative: IME onProgress kb=170 eff=125 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:01.884 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=147 safeBottom=45 gap=24 transY=-171.0
+01-15 11:26:01.884 31577 31577 W KeyboardComposerNative: IME onProgress kb=147 eff=102 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:01.893 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=126 safeBottom=45 gap=24 transY=-150.0
+01-15 11:26:01.893 31577 31577 W KeyboardComposerNative: IME onProgress kb=126 eff=81 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:01.901 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=106 safeBottom=45 gap=24 transY=-130.0
+01-15 11:26:01.901 31577 31577 W KeyboardComposerNative: IME onProgress kb=106 eff=61 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:01.909 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=90 safeBottom=45 gap=24 transY=-114.0
+01-15 11:26:01.909 31577 31577 W KeyboardComposerNative: IME onProgress kb=90 eff=45 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:01.918 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=76 safeBottom=45 gap=24 transY=-100.0
+01-15 11:26:01.918 31577 31577 W KeyboardComposerNative: IME onProgress kb=76 eff=31 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:01.926 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=62 safeBottom=45 gap=24 transY=-86.0
+01-15 11:26:01.926 31577 31577 W KeyboardComposerNative: IME onProgress kb=62 eff=17 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:01.935 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=51 safeBottom=45 gap=24 transY=-75.0
+01-15 11:26:01.935 31577 31577 W KeyboardComposerNative: IME onProgress kb=51 eff=6 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:01.943 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=41 safeBottom=45 gap=24 transY=-69.0
+01-15 11:26:01.943 31577 31577 W KeyboardComposerNative: IME onProgress kb=41 eff=0 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:01.951 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=32 safeBottom=45 gap=24 transY=-69.0
+01-15 11:26:01.951 31577 31577 W KeyboardComposerNative: IME onProgress kb=32 eff=0 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:01.959 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=25 safeBottom=45 gap=24 transY=-69.0
+01-15 11:26:01.959 31577 31577 W KeyboardComposerNative: IME onProgress kb=25 eff=0 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:01.968 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=19 safeBottom=45 gap=24 transY=-69.0
+01-15 11:26:01.968 31577 31577 W KeyboardComposerNative: IME onProgress kb=19 eff=0 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:01.976 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=13 safeBottom=45 gap=24 transY=-69.0
+01-15 11:26:01.976 31577 31577 W KeyboardComposerNative: IME onProgress kb=13 eff=0 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:01.984 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=9 safeBottom=45 gap=24 transY=-69.0
+01-15 11:26:01.984 31577 31577 W KeyboardComposerNative: IME onProgress kb=9 eff=0 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:01.992 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=6 safeBottom=45 gap=24 transY=-69.0
+01-15 11:26:01.993 31577 31577 W KeyboardComposerNative: IME onProgress kb=6 eff=0 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:02.001 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=3 safeBottom=45 gap=24 transY=-69.0
+01-15 11:26:02.001 31577 31577 W KeyboardComposerNative: IME onProgress kb=3 eff=0 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:02.009 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=2 safeBottom=45 gap=24 transY=-69.0
+01-15 11:26:02.009 31577 31577 W KeyboardComposerNative: IME onProgress kb=2 eff=0 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:02.017 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=1 safeBottom=45 gap=24 transY=-69.0
+01-15 11:26:02.018 31577 31577 W KeyboardComposerNative: IME onProgress kb=1 eff=0 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:02.026 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=0 safeBottom=45 gap=24 transY=-69.0
+01-15 11:26:02.026 31577 31577 W KeyboardComposerNative: IME onProgress kb=0 eff=0 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:02.026 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=0 safeBottom=45 gap=24 transY=-69.0
+01-15 11:26:02.026 31577 31577 W KeyboardComposerNative: updateScrollPadding base=261 runway=0 final=261 scrollY=0 maxScroll=0
+01-15 11:26:02.026 31577 31577 W KeyboardComposerNative: IME onEnd kb=0 eff=0 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:02.026 31577 31577 W KeyboardComposerNative: updateScrollPadding base=261 runway=1580 final=1841 scrollY=0 maxScroll=0
+01-15 11:26:02.027 31577 31577 W KeyboardComposerNative: applyPin contentAfter=262 viewport=2103 pinned=true pinnedY=0 runway=1580
+01-15 11:26:02.034 31577 31577 W KeyboardComposerNative: pinnedSettled settled=true frames=1 delta=0 targetY=0
+01-15 11:26:02.254 31577 31577 W KeyboardComposerNative: updateScrollPadding base=261 runway=1438 final=1699 scrollY=0 maxScroll=0
+01-15 11:26:02.378 31577 31577 W KeyboardComposerNative: updateScrollPadding base=261 runway=1344 final=1605 scrollY=0 maxScroll=0
+01-15 11:26:02.457 31577 31577 W KeyboardComposerNative: updateScrollPadding base=261 runway=1333 final=1594 scrollY=0 maxScroll=0
+01-15 11:26:02.844 31577 31577 W KeyboardComposerNative: updateScrollPadding base=261 runway=1287 final=1548 scrollY=0 maxScroll=0
+01-15 11:26:03.344 31577 31577 W KeyboardComposerNative: updateScrollPadding base=261 runway=1241 final=1502 scrollY=0 maxScroll=0
+01-15 11:26:03.759 31577 31577 W KeyboardComposerNative: updateScrollPadding base=261 runway=1195 final=1456 scrollY=0 maxScroll=0
+01-15 11:26:04.319 31577 31577 W KeyboardComposerNative: updateScrollPadding base=261 runway=1149 final=1410 scrollY=0 maxScroll=0
+01-15 11:26:04.754 31577 31577 W KeyboardComposerNative: updateScrollPadding base=261 runway=1103 final=1364 scrollY=0 maxScroll=0
+01-15 11:26:05.152 31577 31577 W KeyboardComposerNative: updateScrollPadding base=261 runway=1057 final=1318 scrollY=0 maxScroll=0
+01-15 11:26:05.543 31577 31577 W KeyboardComposerNative: updateScrollPadding base=261 runway=1011 final=1272 scrollY=0 maxScroll=0
+01-15 11:26:05.993 31577 31577 W KeyboardComposerNative: updateScrollPadding base=261 runway=965 final=1226 scrollY=0 maxScroll=0
+01-15 11:26:06.402 31577 31577 W KeyboardComposerNative: updateScrollPadding base=261 runway=919 final=1180 scrollY=0 maxScroll=0
+01-15 11:26:06.803 31577 31577 W KeyboardComposerNative: updateScrollPadding base=261 runway=873 final=1134 scrollY=0 maxScroll=0
+01-15 11:26:07.194 31577 31577 W KeyboardComposerNative: updateScrollPadding base=261 runway=827 final=1088 scrollY=0 maxScroll=0
+01-15 11:26:07.752 31577 31577 W KeyboardComposerNative: updateScrollPadding base=261 runway=781 final=1042 scrollY=0 maxScroll=0
+01-15 11:26:08.393 31577 31577 W KeyboardComposerNative: updateScrollPadding base=261 runway=735 final=996 scrollY=0 maxScroll=0
+01-15 11:26:08.993 31577 31577 W KeyboardComposerNative: updateScrollPadding base=261 runway=689 final=950 scrollY=0 maxScroll=0
+01-15 11:26:09.594 31577 31577 W KeyboardComposerNative: updateScrollPadding base=261 runway=643 final=904 scrollY=0 maxScroll=0
+01-15 11:26:10.103 31577 31577 W KeyboardComposerNative: updateScrollPadding base=261 runway=597 final=858 scrollY=0 maxScroll=0
+01-15 11:26:11.641 31577 31577 W KeyboardComposerNative: Composer EditText ACTION_DOWN shown=true enabled=true hint='Ask anything'
+01-15 11:26:11.810 31577 31577 W KeyboardComposerNative: IME onPrepare opening=true keyboardH=0 wasAtBottom=false scrollY=0 maxScroll=0 childH=1245 svH=2103
+01-15 11:26:11.816 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=1026 safeBottom=45 gap=24 transY=-1050.0
+01-15 11:26:11.816 31577 31577 W KeyboardComposerNative: clearPinnedState
+01-15 11:26:11.816 31577 31577 W KeyboardComposerNative: updateScrollPadding base=1242 runway=0 final=1242 scrollY=0 maxScroll=384
+01-15 11:26:11.816 31577 31577 W KeyboardComposerNative: Insets applied safeBottom=45 imeBottom=1026 scrollH=2103
+01-15 11:26:11.818 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=0 safeBottom=45 gap=24 transY=-69.0
+01-15 11:26:11.819 31577 31577 W KeyboardComposerNative: IME onProgress kb=0 eff=0 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:11.824 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=0 safeBottom=45 gap=24 transY=-69.0
+01-15 11:26:11.824 31577 31577 W KeyboardComposerNative: IME onProgress kb=0 eff=0 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:11.832 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=33 safeBottom=45 gap=24 transY=-69.0
+01-15 11:26:11.832 31577 31577 W KeyboardComposerNative: IME onProgress kb=33 eff=0 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:11.841 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=80 safeBottom=45 gap=24 transY=-104.0
+01-15 11:26:11.841 31577 31577 W KeyboardComposerNative: IME onProgress kb=80 eff=35 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:11.849 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=137 safeBottom=45 gap=24 transY=-161.0
+01-15 11:26:11.849 31577 31577 W KeyboardComposerNative: IME onProgress kb=137 eff=92 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:11.857 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=213 safeBottom=45 gap=24 transY=-237.0
+01-15 11:26:11.858 31577 31577 W KeyboardComposerNative: IME onProgress kb=213 eff=168 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:11.866 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=316 safeBottom=45 gap=24 transY=-340.0
+01-15 11:26:11.866 31577 31577 W KeyboardComposerNative: IME onProgress kb=316 eff=271 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:11.874 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=410 safeBottom=45 gap=24 transY=-434.0
+01-15 11:26:11.874 31577 31577 W KeyboardComposerNative: IME onProgress kb=410 eff=365 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:11.882 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=492 safeBottom=45 gap=24 transY=-516.0
+01-15 11:26:11.882 31577 31577 W KeyboardComposerNative: IME onProgress kb=492 eff=447 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:11.891 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=566 safeBottom=45 gap=24 transY=-590.0
+01-15 11:26:11.891 31577 31577 W KeyboardComposerNative: IME onProgress kb=566 eff=521 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:11.900 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=622 safeBottom=45 gap=24 transY=-646.0
+01-15 11:26:11.900 31577 31577 W KeyboardComposerNative: IME onProgress kb=622 eff=577 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:11.907 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=667 safeBottom=45 gap=24 transY=-691.0
+01-15 11:26:11.907 31577 31577 W KeyboardComposerNative: IME onProgress kb=667 eff=622 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:11.916 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=711 safeBottom=45 gap=24 transY=-735.0
+01-15 11:26:11.916 31577 31577 W KeyboardComposerNative: IME onProgress kb=711 eff=666 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:11.924 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=745 safeBottom=45 gap=24 transY=-769.0
+01-15 11:26:11.924 31577 31577 W KeyboardComposerNative: IME onProgress kb=745 eff=700 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:11.932 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=776 safeBottom=45 gap=24 transY=-800.0
+01-15 11:26:11.932 31577 31577 W KeyboardComposerNative: IME onProgress kb=776 eff=731 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:11.941 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=805 safeBottom=45 gap=24 transY=-829.0
+01-15 11:26:11.941 31577 31577 W KeyboardComposerNative: IME onProgress kb=805 eff=760 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:11.949 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=827 safeBottom=45 gap=24 transY=-851.0
+01-15 11:26:11.949 31577 31577 W KeyboardComposerNative: IME onProgress kb=827 eff=782 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:11.957 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=848 safeBottom=45 gap=24 transY=-872.0
+01-15 11:26:11.957 31577 31577 W KeyboardComposerNative: IME onProgress kb=848 eff=803 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:11.966 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=869 safeBottom=45 gap=24 transY=-893.0
+01-15 11:26:11.966 31577 31577 W KeyboardComposerNative: IME onProgress kb=869 eff=824 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:11.974 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=885 safeBottom=45 gap=24 transY=-909.0
+01-15 11:26:11.974 31577 31577 W KeyboardComposerNative: IME onProgress kb=885 eff=840 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:11.982 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=900 safeBottom=45 gap=24 transY=-924.0
+01-15 11:26:11.982 31577 31577 W KeyboardComposerNative: IME onProgress kb=900 eff=855 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:11.991 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=915 safeBottom=45 gap=24 transY=-939.0
+01-15 11:26:11.991 31577 31577 W KeyboardComposerNative: IME onProgress kb=915 eff=870 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:11.999 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=928 safeBottom=45 gap=24 transY=-952.0
+01-15 11:26:11.999 31577 31577 W KeyboardComposerNative: IME onProgress kb=928 eff=883 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:12.007 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=938 safeBottom=45 gap=24 transY=-962.0
+01-15 11:26:12.007 31577 31577 W KeyboardComposerNative: IME onProgress kb=938 eff=893 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:12.016 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=950 safeBottom=45 gap=24 transY=-974.0
+01-15 11:26:12.016 31577 31577 W KeyboardComposerNative: IME onProgress kb=950 eff=905 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:12.024 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=959 safeBottom=45 gap=24 transY=-983.0
+01-15 11:26:12.024 31577 31577 W KeyboardComposerNative: IME onProgress kb=959 eff=914 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:12.032 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=967 safeBottom=45 gap=24 transY=-991.0
+01-15 11:26:12.032 31577 31577 W KeyboardComposerNative: IME onProgress kb=967 eff=922 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:12.041 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=976 safeBottom=45 gap=24 transY=-1000.0
+01-15 11:26:12.041 31577 31577 W KeyboardComposerNative: IME onProgress kb=976 eff=931 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:12.049 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=982 safeBottom=45 gap=24 transY=-1006.0
+01-15 11:26:12.049 31577 31577 W KeyboardComposerNative: IME onProgress kb=982 eff=937 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:12.057 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=988 safeBottom=45 gap=24 transY=-1012.0
+01-15 11:26:12.058 31577 31577 W KeyboardComposerNative: IME onProgress kb=988 eff=943 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:12.066 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=994 safeBottom=45 gap=24 transY=-1018.0
+01-15 11:26:12.066 31577 31577 W KeyboardComposerNative: IME onProgress kb=994 eff=949 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:12.074 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=999 safeBottom=45 gap=24 transY=-1023.0
+01-15 11:26:12.074 31577 31577 W KeyboardComposerNative: IME onProgress kb=999 eff=954 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:12.082 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=1004 safeBottom=45 gap=24 transY=-1028.0
+01-15 11:26:12.083 31577 31577 W KeyboardComposerNative: IME onProgress kb=1004 eff=959 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:12.091 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=1008 safeBottom=45 gap=24 transY=-1032.0
+01-15 11:26:12.091 31577 31577 W KeyboardComposerNative: IME onProgress kb=1008 eff=963 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:12.099 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=1011 safeBottom=45 gap=24 transY=-1035.0
+01-15 11:26:12.099 31577 31577 W KeyboardComposerNative: IME onProgress kb=1011 eff=966 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:12.108 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=1014 safeBottom=45 gap=24 transY=-1038.0
+01-15 11:26:12.108 31577 31577 W KeyboardComposerNative: IME onProgress kb=1014 eff=969 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:12.116 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=1017 safeBottom=45 gap=24 transY=-1041.0
+01-15 11:26:12.116 31577 31577 W KeyboardComposerNative: IME onProgress kb=1017 eff=972 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:12.124 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=1019 safeBottom=45 gap=24 transY=-1043.0
+01-15 11:26:12.125 31577 31577 W KeyboardComposerNative: IME onProgress kb=1019 eff=974 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:12.133 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=1021 safeBottom=45 gap=24 transY=-1045.0
+01-15 11:26:12.133 31577 31577 W KeyboardComposerNative: IME onProgress kb=1021 eff=976 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:12.141 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=1023 safeBottom=45 gap=24 transY=-1047.0
+01-15 11:26:12.141 31577 31577 W KeyboardComposerNative: IME onProgress kb=1023 eff=978 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:12.149 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=1024 safeBottom=45 gap=24 transY=-1048.0
+01-15 11:26:12.149 31577 31577 W KeyboardComposerNative: IME onProgress kb=1024 eff=979 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:12.158 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=1024 safeBottom=45 gap=24 transY=-1048.0
+01-15 11:26:12.158 31577 31577 W KeyboardComposerNative: IME onProgress kb=1024 eff=979 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:12.167 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=1025 safeBottom=45 gap=24 transY=-1049.0
+01-15 11:26:12.167 31577 31577 W KeyboardComposerNative: IME onProgress kb=1025 eff=980 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:12.176 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=1026 safeBottom=45 gap=24 transY=-1050.0
+01-15 11:26:12.176 31577 31577 W KeyboardComposerNative: IME onProgress kb=1026 eff=981 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:12.176 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=1026 safeBottom=45 gap=24 transY=-1050.0
+01-15 11:26:12.177 31577 31577 W KeyboardComposerNative: updateScrollPadding base=1242 runway=0 final=1242 scrollY=0 maxScroll=384
+01-15 11:26:12.177 31577 31577 W KeyboardComposerNative: IME onEnd kb=1026 eff=981 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:15.137 31577 31577 W KeyboardComposerNative: IME onPrepare opening=false keyboardH=1026 wasAtBottom=false scrollY=0 maxScroll=384 childH=1245 svH=2103
+01-15 11:26:15.142 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=0 safeBottom=45 gap=24 transY=-69.0
+01-15 11:26:15.142 31577 31577 W KeyboardComposerNative: updateScrollPadding base=261 runway=0 final=261 scrollY=0 maxScroll=0
+01-15 11:26:15.142 31577 31577 W KeyboardComposerNative: Insets applied safeBottom=45 imeBottom=0 scrollH=2103
+01-15 11:26:15.150 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=1026 safeBottom=45 gap=24 transY=-1050.0
+01-15 11:26:15.150 31577 31577 W KeyboardComposerNative: IME onProgress kb=1026 eff=981 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:15.153 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=1025 safeBottom=45 gap=24 transY=-1049.0
+01-15 11:26:15.153 31577 31577 W KeyboardComposerNative: IME onProgress kb=1025 eff=980 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:15.158 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=1024 safeBottom=45 gap=24 transY=-1048.0
+01-15 11:26:15.158 31577 31577 W KeyboardComposerNative: IME onProgress kb=1024 eff=979 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:15.166 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=1019 safeBottom=45 gap=24 transY=-1043.0
+01-15 11:26:15.167 31577 31577 W KeyboardComposerNative: IME onProgress kb=1019 eff=974 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:15.175 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=1012 safeBottom=45 gap=24 transY=-1036.0
+01-15 11:26:15.175 31577 31577 W KeyboardComposerNative: IME onProgress kb=1012 eff=967 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:15.183 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=1002 safeBottom=45 gap=24 transY=-1026.0
+01-15 11:26:15.183 31577 31577 W KeyboardComposerNative: IME onProgress kb=1002 eff=957 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:15.192 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=991 safeBottom=45 gap=24 transY=-1015.0
+01-15 11:26:15.192 31577 31577 W KeyboardComposerNative: IME onProgress kb=991 eff=946 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:15.201 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=983 safeBottom=45 gap=24 transY=-1007.0
+01-15 11:26:15.201 31577 31577 W KeyboardComposerNative: IME onProgress kb=983 eff=938 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:15.208 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=975 safeBottom=45 gap=24 transY=-999.0
+01-15 11:26:15.209 31577 31577 W KeyboardComposerNative: IME onProgress kb=975 eff=930 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:15.217 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=968 safeBottom=45 gap=24 transY=-992.0
+01-15 11:26:15.217 31577 31577 W KeyboardComposerNative: IME onProgress kb=968 eff=923 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:15.226 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=968 safeBottom=45 gap=24 transY=-992.0
+01-15 11:26:15.226 31577 31577 W KeyboardComposerNative: IME onProgress kb=968 eff=923 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:15.229 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=968 safeBottom=45 gap=24 transY=-992.0
+01-15 11:26:15.229 31577 31577 W KeyboardComposerNative: IME onProgress kb=968 eff=923 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:15.233 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=958 safeBottom=45 gap=24 transY=-982.0
+01-15 11:26:15.233 31577 31577 W KeyboardComposerNative: IME onProgress kb=958 eff=913 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:15.241 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=926 safeBottom=45 gap=24 transY=-950.0
+01-15 11:26:15.242 31577 31577 W KeyboardComposerNative: IME onProgress kb=926 eff=881 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:15.250 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=857 safeBottom=45 gap=24 transY=-881.0
+01-15 11:26:15.250 31577 31577 W KeyboardComposerNative: IME onProgress kb=857 eff=812 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:15.258 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=743 safeBottom=45 gap=24 transY=-767.0
+01-15 11:26:15.258 31577 31577 W KeyboardComposerNative: IME onProgress kb=743 eff=698 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:15.266 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=639 safeBottom=45 gap=24 transY=-663.0
+01-15 11:26:15.266 31577 31577 W KeyboardComposerNative: IME onProgress kb=639 eff=594 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:15.276 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=551 safeBottom=45 gap=24 transY=-575.0
+01-15 11:26:15.276 31577 31577 W KeyboardComposerNative: IME onProgress kb=551 eff=506 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:15.283 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=469 safeBottom=45 gap=24 transY=-493.0
+01-15 11:26:15.283 31577 31577 W KeyboardComposerNative: IME onProgress kb=469 eff=424 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:15.292 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=409 safeBottom=45 gap=24 transY=-433.0
+01-15 11:26:15.292 31577 31577 W KeyboardComposerNative: IME onProgress kb=409 eff=364 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:15.300 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=360 safeBottom=45 gap=24 transY=-384.0
+01-15 11:26:15.300 31577 31577 W KeyboardComposerNative: IME onProgress kb=360 eff=315 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:15.308 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=309 safeBottom=45 gap=24 transY=-333.0
+01-15 11:26:15.308 31577 31577 W KeyboardComposerNative: IME onProgress kb=309 eff=264 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:15.317 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=272 safeBottom=45 gap=24 transY=-296.0
+01-15 11:26:15.318 31577 31577 W KeyboardComposerNative: IME onProgress kb=272 eff=227 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:15.325 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=240 safeBottom=45 gap=24 transY=-264.0
+01-15 11:26:15.326 31577 31577 W KeyboardComposerNative: IME onProgress kb=240 eff=195 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:15.334 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=208 safeBottom=45 gap=24 transY=-232.0
+01-15 11:26:15.334 31577 31577 W KeyboardComposerNative: IME onProgress kb=208 eff=163 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:15.341 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=182 safeBottom=45 gap=24 transY=-206.0
+01-15 11:26:15.342 31577 31577 W KeyboardComposerNative: IME onProgress kb=182 eff=137 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:15.351 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=160 safeBottom=45 gap=24 transY=-184.0
+01-15 11:26:15.351 31577 31577 W KeyboardComposerNative: IME onProgress kb=160 eff=115 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:15.358 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=140 safeBottom=45 gap=24 transY=-164.0
+01-15 11:26:15.358 31577 31577 W KeyboardComposerNative: IME onProgress kb=140 eff=95 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:15.366 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=119 safeBottom=45 gap=24 transY=-143.0
+01-15 11:26:15.367 31577 31577 W KeyboardComposerNative: IME onProgress kb=119 eff=74 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:15.375 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=104 safeBottom=45 gap=24 transY=-128.0
+01-15 11:26:15.375 31577 31577 W KeyboardComposerNative: IME onProgress kb=104 eff=59 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:15.384 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=89 safeBottom=45 gap=24 transY=-113.0
+01-15 11:26:15.384 31577 31577 W KeyboardComposerNative: IME onProgress kb=89 eff=44 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:15.392 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=75 safeBottom=45 gap=24 transY=-99.0
+01-15 11:26:15.392 31577 31577 W KeyboardComposerNative: IME onProgress kb=75 eff=30 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:15.400 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=63 safeBottom=45 gap=24 transY=-87.0
+01-15 11:26:15.400 31577 31577 W KeyboardComposerNative: IME onProgress kb=63 eff=18 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:15.409 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=53 safeBottom=45 gap=24 transY=-77.0
+01-15 11:26:15.409 31577 31577 W KeyboardComposerNative: IME onProgress kb=53 eff=8 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:15.417 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=43 safeBottom=45 gap=24 transY=-69.0
+01-15 11:26:15.417 31577 31577 W KeyboardComposerNative: IME onProgress kb=43 eff=0 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:15.425 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=35 safeBottom=45 gap=24 transY=-69.0
+01-15 11:26:15.426 31577 31577 W KeyboardComposerNative: IME onProgress kb=35 eff=0 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:15.433 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=27 safeBottom=45 gap=24 transY=-69.0
+01-15 11:26:15.434 31577 31577 W KeyboardComposerNative: IME onProgress kb=27 eff=0 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:15.442 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=21 safeBottom=45 gap=24 transY=-69.0
+01-15 11:26:15.442 31577 31577 W KeyboardComposerNative: IME onProgress kb=21 eff=0 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:15.450 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=17 safeBottom=45 gap=24 transY=-69.0
+01-15 11:26:15.451 31577 31577 W KeyboardComposerNative: IME onProgress kb=17 eff=0 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:15.458 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=11 safeBottom=45 gap=24 transY=-69.0
+01-15 11:26:15.459 31577 31577 W KeyboardComposerNative: IME onProgress kb=11 eff=0 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:15.467 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=8 safeBottom=45 gap=24 transY=-69.0
+01-15 11:26:15.467 31577 31577 W KeyboardComposerNative: IME onProgress kb=8 eff=0 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:15.476 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=5 safeBottom=45 gap=24 transY=-69.0
+01-15 11:26:15.476 31577 31577 W KeyboardComposerNative: IME onProgress kb=5 eff=0 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:15.483 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=2 safeBottom=45 gap=24 transY=-69.0
+01-15 11:26:15.483 31577 31577 W KeyboardComposerNative: IME onProgress kb=2 eff=0 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:15.492 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=1 safeBottom=45 gap=24 transY=-69.0
+01-15 11:26:15.492 31577 31577 W KeyboardComposerNative: IME onProgress kb=1 eff=0 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:15.500 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=1 safeBottom=45 gap=24 transY=-69.0
+01-15 11:26:15.500 31577 31577 W KeyboardComposerNative: IME onProgress kb=1 eff=0 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:15.509 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=0 safeBottom=45 gap=24 transY=-69.0
+01-15 11:26:15.509 31577 31577 W KeyboardComposerNative: IME onProgress kb=0 eff=0 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:15.517 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=0 safeBottom=45 gap=24 transY=-69.0
+01-15 11:26:15.517 31577 31577 W KeyboardComposerNative: IME onProgress kb=0 eff=0 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:15.519 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=0 safeBottom=45 gap=24 transY=-69.0
+01-15 11:26:15.519 31577 31577 W KeyboardComposerNative: IME onProgress kb=0 eff=0 safe=45 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:15.519 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=0 safeBottom=45 gap=24 transY=-69.0
+01-15 11:26:15.520 31577 31577 W KeyboardComposerNative: updateScrollPadding base=261 runway=0 final=261 scrollY=0 maxScroll=0
+01-15 11:26:15.520 31577 31577 W KeyboardComposerNative: IME onEnd kb=0 eff=0 wasAtBottom=false scrollY=0 maxScroll=0
+01-15 11:26:16.654 31577 31577 W KeyboardComposerNative: Composer EditText ACTION_DOWN shown=true enabled=true hint='Ask anything'
+01-15 11:26:16.794 31577 31577 W KeyboardComposerNative: IME onPrepare opening=true keyboardH=0 wasAtBottom=false scrollY=0 maxScroll=0 childH=1245 svH=2103
+01-15 11:26:16.799 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=1026 safeBottom=45 gap=24 transY=-1050.0
+01-15 11:26:16.799 31577 31577 W KeyboardComposerNative: updateScrollPadding base=1242 runway=0 final=1242 scrollY=0 maxScroll=384
+01-15 11:26:16.799 31577 31577 W KeyboardComposerNative: Insets applied safeBottom=45 imeBottom=1026 scrollH=2103
+01-15 11:26:16.801 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=0 safeBottom=45 gap=24 transY=-69.0
+01-15 11:26:16.801 31577 31577 W KeyboardComposerNative: IME onProgress kb=0 eff=0 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:16.807 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=0 safeBottom=45 gap=24 transY=-69.0
+01-15 11:26:16.807 31577 31577 W KeyboardComposerNative: IME onProgress kb=0 eff=0 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:16.816 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=37 safeBottom=45 gap=24 transY=-69.0
+01-15 11:26:16.816 31577 31577 W KeyboardComposerNative: IME onProgress kb=37 eff=0 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:16.824 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=80 safeBottom=45 gap=24 transY=-104.0
+01-15 11:26:16.824 31577 31577 W KeyboardComposerNative: IME onProgress kb=80 eff=35 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:16.832 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=137 safeBottom=45 gap=24 transY=-161.0
+01-15 11:26:16.832 31577 31577 W KeyboardComposerNative: IME onProgress kb=137 eff=92 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:16.841 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=224 safeBottom=45 gap=24 transY=-248.0
+01-15 11:26:16.841 31577 31577 W KeyboardComposerNative: IME onProgress kb=224 eff=179 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:16.849 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=316 safeBottom=45 gap=24 transY=-340.0
+01-15 11:26:16.849 31577 31577 W KeyboardComposerNative: IME onProgress kb=316 eff=271 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:16.857 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=410 safeBottom=45 gap=24 transY=-434.0
+01-15 11:26:16.858 31577 31577 W KeyboardComposerNative: IME onProgress kb=410 eff=365 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:16.866 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=501 safeBottom=45 gap=24 transY=-525.0
+01-15 11:26:16.866 31577 31577 W KeyboardComposerNative: IME onProgress kb=501 eff=456 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:16.874 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=566 safeBottom=45 gap=24 transY=-590.0
+01-15 11:26:16.874 31577 31577 W KeyboardComposerNative: IME onProgress kb=566 eff=521 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:16.882 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=622 safeBottom=45 gap=24 transY=-646.0
+01-15 11:26:16.882 31577 31577 W KeyboardComposerNative: IME onProgress kb=622 eff=577 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:16.891 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=673 safeBottom=45 gap=24 transY=-697.0
+01-15 11:26:16.891 31577 31577 W KeyboardComposerNative: IME onProgress kb=673 eff=628 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:16.899 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=711 safeBottom=45 gap=24 transY=-735.0
+01-15 11:26:16.899 31577 31577 W KeyboardComposerNative: IME onProgress kb=711 eff=666 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:16.907 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=745 safeBottom=45 gap=24 transY=-769.0
+01-15 11:26:16.907 31577 31577 W KeyboardComposerNative: IME onProgress kb=745 eff=700 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:16.916 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=779 safeBottom=45 gap=24 transY=-803.0
+01-15 11:26:16.916 31577 31577 W KeyboardComposerNative: IME onProgress kb=779 eff=734 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:16.924 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=805 safeBottom=45 gap=24 transY=-829.0
+01-15 11:26:16.924 31577 31577 W KeyboardComposerNative: IME onProgress kb=805 eff=760 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:16.932 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=827 safeBottom=45 gap=24 transY=-851.0
+01-15 11:26:16.933 31577 31577 W KeyboardComposerNative: IME onProgress kb=827 eff=782 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:16.941 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=850 safeBottom=45 gap=24 transY=-874.0
+01-15 11:26:16.941 31577 31577 W KeyboardComposerNative: IME onProgress kb=850 eff=805 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:16.949 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=869 safeBottom=45 gap=24 transY=-893.0
+01-15 11:26:16.949 31577 31577 W KeyboardComposerNative: IME onProgress kb=869 eff=824 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:16.957 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=885 safeBottom=45 gap=24 transY=-909.0
+01-15 11:26:16.958 31577 31577 W KeyboardComposerNative: IME onProgress kb=885 eff=840 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:16.966 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=902 safeBottom=45 gap=24 transY=-926.0
+01-15 11:26:16.966 31577 31577 W KeyboardComposerNative: IME onProgress kb=902 eff=857 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:16.974 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=915 safeBottom=45 gap=24 transY=-939.0
+01-15 11:26:16.974 31577 31577 W KeyboardComposerNative: IME onProgress kb=915 eff=870 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:16.982 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=928 safeBottom=45 gap=24 transY=-952.0
+01-15 11:26:16.982 31577 31577 W KeyboardComposerNative: IME onProgress kb=928 eff=883 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:16.991 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=939 safeBottom=45 gap=24 transY=-963.0
+01-15 11:26:16.991 31577 31577 W KeyboardComposerNative: IME onProgress kb=939 eff=894 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:16.999 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=950 safeBottom=45 gap=24 transY=-974.0
+01-15 11:26:16.999 31577 31577 W KeyboardComposerNative: IME onProgress kb=950 eff=905 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:17.008 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=959 safeBottom=45 gap=24 transY=-983.0
+01-15 11:26:17.008 31577 31577 W KeyboardComposerNative: IME onProgress kb=959 eff=914 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:17.016 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=968 safeBottom=45 gap=24 transY=-992.0
+01-15 11:26:17.016 31577 31577 W KeyboardComposerNative: IME onProgress kb=968 eff=923 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:17.024 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=976 safeBottom=45 gap=24 transY=-1000.0
+01-15 11:26:17.024 31577 31577 W KeyboardComposerNative: IME onProgress kb=976 eff=931 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:17.033 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=982 safeBottom=45 gap=24 transY=-1006.0
+01-15 11:26:17.033 31577 31577 W KeyboardComposerNative: IME onProgress kb=982 eff=937 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:17.041 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=989 safeBottom=45 gap=24 transY=-1013.0
+01-15 11:26:17.041 31577 31577 W KeyboardComposerNative: IME onProgress kb=989 eff=944 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:17.049 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=994 safeBottom=45 gap=24 transY=-1018.0
+01-15 11:26:17.049 31577 31577 W KeyboardComposerNative: IME onProgress kb=994 eff=949 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:17.058 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=999 safeBottom=45 gap=24 transY=-1023.0
+01-15 11:26:17.058 31577 31577 W KeyboardComposerNative: IME onProgress kb=999 eff=954 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:17.066 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=1004 safeBottom=45 gap=24 transY=-1028.0
+01-15 11:26:17.066 31577 31577 W KeyboardComposerNative: IME onProgress kb=1004 eff=959 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:17.074 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=1008 safeBottom=45 gap=24 transY=-1032.0
+01-15 11:26:17.074 31577 31577 W KeyboardComposerNative: IME onProgress kb=1008 eff=963 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:17.083 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=1011 safeBottom=45 gap=24 transY=-1035.0
+01-15 11:26:17.083 31577 31577 W KeyboardComposerNative: IME onProgress kb=1011 eff=966 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:17.091 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=1015 safeBottom=45 gap=24 transY=-1039.0
+01-15 11:26:17.091 31577 31577 W KeyboardComposerNative: IME onProgress kb=1015 eff=970 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:17.099 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=1017 safeBottom=45 gap=24 transY=-1041.0
+01-15 11:26:17.099 31577 31577 W KeyboardComposerNative: IME onProgress kb=1017 eff=972 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:17.107 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=1019 safeBottom=45 gap=24 transY=-1043.0
+01-15 11:26:17.108 31577 31577 W KeyboardComposerNative: IME onProgress kb=1019 eff=974 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:17.116 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=1021 safeBottom=45 gap=24 transY=-1045.0
+01-15 11:26:17.116 31577 31577 W KeyboardComposerNative: IME onProgress kb=1021 eff=976 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:17.124 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=1023 safeBottom=45 gap=24 transY=-1047.0
+01-15 11:26:17.124 31577 31577 W KeyboardComposerNative: IME onProgress kb=1023 eff=978 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:17.132 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=1024 safeBottom=45 gap=24 transY=-1048.0
+01-15 11:26:17.133 31577 31577 W KeyboardComposerNative: IME onProgress kb=1024 eff=979 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:17.141 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=1024 safeBottom=45 gap=24 transY=-1048.0
+01-15 11:26:17.141 31577 31577 W KeyboardComposerNative: IME onProgress kb=1024 eff=979 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:17.149 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=1025 safeBottom=45 gap=24 transY=-1049.0
+01-15 11:26:17.150 31577 31577 W KeyboardComposerNative: IME onProgress kb=1025 eff=980 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:17.159 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=1026 safeBottom=45 gap=24 transY=-1050.0
+01-15 11:26:17.159 31577 31577 W KeyboardComposerNative: IME onProgress kb=1026 eff=981 safe=45 wasAtBottom=false scrollY=0 maxScroll=384
+01-15 11:26:17.159 31577 31577 W KeyboardComposerNative: applyComposerTranslation keyboardH=1026 safeBottom=45 gap=24 transY=-1050.0
+01-15 11:26:17.159 31577 31577 W KeyboardComposerNative: updateScrollPadding base=1242 runway=0 final=1242 scrollY=0 maxScroll=384
+01-15 11:26:17.159 31577 31577 W KeyboardComposerNative: IME onEnd kb=1026 eff=981 wasAtBottom=false scrollY=0 maxScroll=384

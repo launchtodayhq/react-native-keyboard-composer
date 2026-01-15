@@ -10,6 +10,7 @@ internal class ImeKeyboardAnimationController(
     private val getSafeAreaBottom: () -> Int,
     private val getCurrentKeyboardHeight: () -> Int,
     private val setCurrentKeyboardHeight: (Int) -> Unit,
+    private val setImeAnimating: (Boolean) -> Unit,
     private val applyComposerTranslation: () -> Unit,
     private val updateScrollButtonPosition: () -> Unit,
     private val updateScrollPadding: () -> Unit,
@@ -41,6 +42,7 @@ internal class ImeKeyboardAnimationController(
             object : WindowInsetsAnimationCompat.Callback(DISPATCH_MODE_CONTINUE_ON_SUBTREE) {
                 override fun onPrepare(animation: WindowInsetsAnimationCompat) {
                     if (animation.typeMask and WindowInsetsCompat.Type.ime() == 0) return
+                    setImeAnimating(true)
 
                     val currentKeyboardHeight = getCurrentKeyboardHeight()
                     if (currentKeyboardHeight == 0) {
@@ -109,6 +111,13 @@ internal class ImeKeyboardAnimationController(
                         scrollView.getChildAt(0)?.translationY = contentTranslation.toFloat()
                     }
 
+                    if (DEBUG_LOGS) {
+                        android.util.Log.w(
+                            TAG,
+                            "IME onProgress kb=$keyboardHeight eff=$effectiveKeyboard safe=$safeAreaBottom wasAtBottom=$wasAtBottom scrollY=${scrollView.scrollY} maxScroll=${getMaxScroll(scrollView)}"
+                        )
+                    }
+
                     return insets
                 }
 
@@ -145,6 +154,14 @@ internal class ImeKeyboardAnimationController(
                     updateScrollButtonPosition()
                     postToUi(Runnable { checkAndUpdateScrollPosition() })
 
+                    if (DEBUG_LOGS) {
+                        android.util.Log.w(
+                            TAG,
+                            "IME onEnd kb=$keyboardHeight eff=$effectiveKeyboard wasAtBottom=$wasAtBottom scrollY=${scrollView.scrollY} maxScroll=$maxScroll"
+                        )
+                    }
+
+                    setImeAnimating(false)
                     if (keyboardHeight == 0 && getPendingPinReady()) {
                         setPendingPinReady(false)
                         applyPinAfterSend(getPendingPinContentHeightAfter())
