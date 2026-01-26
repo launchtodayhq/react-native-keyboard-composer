@@ -46,6 +46,18 @@ class KeyboardComposerView(context: Context, appContext: AppContext) : ExpoView(
             editText.hint = value
         }
 
+    var text: String = ""
+        set(value) {
+            // Only update if text is actually different (prevents cursor jump on re-render)
+            if (editText.text?.toString() != value) {
+                editText.setText(value)
+                editText.setSelection(value.length)
+                updateHeight()
+                updateSendButtonState()
+            }
+        }
+        get() = editText.text?.toString() ?: ""
+
     var minHeightDp: Float = 48f
         set(value) {
             field = value
