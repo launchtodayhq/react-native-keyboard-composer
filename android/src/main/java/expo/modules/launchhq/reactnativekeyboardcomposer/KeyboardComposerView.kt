@@ -46,7 +46,7 @@ class KeyboardComposerView(context: Context, appContext: AppContext) : ExpoView(
             editText.hint = value
         }
 
-    var text: String = ""
+    var text: String
         set(value) {
             // Only update if text is actually different (prevents cursor jump on re-render)
             if (editText.text?.toString() != value) {
