@@ -38,6 +38,9 @@ export type KeyboardComposerViewProps = {
   /** Whether the AI is currently streaming (shows stop button) */
   isStreaming?: boolean;
 
+  /** Enables a native full-height editor sheet once maxHeight is reached (iOS only) */
+  expandedEditorEnabled?: boolean;
+
   /** Called when text changes */
   onChangeText?: (event: { nativeEvent: TextEventPayload }) => void;
 
@@ -91,6 +94,9 @@ export type KeyboardComposerProps = {
 
   /** Whether the AI is currently streaming (shows stop button) */
   isStreaming?: boolean;
+
+  /** Enables a native full-height editor sheet once maxHeight is reached (iOS only) */
+  expandedEditorEnabled?: boolean;
 
   /** Called when text changes */
   onChangeText?: (text: string) => void;

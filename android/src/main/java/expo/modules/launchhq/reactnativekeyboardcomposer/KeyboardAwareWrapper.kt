@@ -23,12 +23,12 @@ import kotlin.math.abs
 class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(context, appContext) {
 
     companion object {
-        private const val CONTENT_GAP_DP = 24
+        private const val CONTENT_GAP_DP = 12
         private const val COMPOSER_KEYBOARD_GAP_DP = 8
         private const val BUTTON_SIZE_DP = 32
         private const val BUTTON_GAP_DP = 24   // Gap between button and input
         private const val PINNED_TOP_PADDING_DP = 16
-        private const val DEBUG_LOGS = false
+        private const val DEBUG_LOGS = true
         private const val TAG = "KeyboardComposerNative"
     }
     
@@ -86,6 +86,9 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
     private var hasAttached = false
     private var safeAreaBottom = 0
     private var currentKeyboardHeight = 0
+    private var imeAnimating = false
+    private var lastLoggedScrollY = -1
+    private var lastLoggedMaxScroll = -1
     
     private val scrollToBottomButtonController: ScrollToBottomButtonController by lazy {
         ScrollToBottomButtonController(
@@ -126,12 +129,29 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
         super.onAttachedToWindow()
         ViewCompat.setOnApplyWindowInsetsListener(this) { _, insets ->
             val newSafeAreaBottom = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom
-            if (newSafeAreaBottom != safeAreaBottom) {
+            val imeBottom = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom
+            val safeAreaChanged = newSafeAreaBottom != safeAreaBottom
+            val keyboardChanged = imeBottom != currentKeyboardHeight
+            val shouldUpdateKeyboard = keyboardChanged && !imeAnimating
+
+            // If IME is animating, ignore IME insets to avoid fighting animation-driven state.
+            if (safeAreaChanged) {
                 safeAreaBottom = newSafeAreaBottom
                 applyComposerTranslation()
-                // Update button position now that we have correct safe area
                 scrollToBottomButtonController.updatePosition()
                 updateScrollPadding()
+            } else if (shouldUpdateKeyboard) {
+                currentKeyboardHeight = imeBottom
+                applyComposerTranslation()
+                scrollToBottomButtonController.updatePosition()
+                updateScrollPadding()
+            }
+
+            if (DEBUG_LOGS) {
+                android.util.Log.w(
+                    TAG,
+                    "Insets applied safeBottom=$safeAreaBottom imeBottom=$imeBottom scrollH=$height imeAnimating=$imeAnimating"
+                )
             }
             insets
         }
@@ -165,6 +185,7 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
             post { findAndAttachViews() }
         }
     }
+
     
     private fun getBasePaddingBottomPx(): Int {
         val contentGap = dpToPx(CONTENT_GAP_DP)
@@ -178,12 +199,31 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
 
     private fun updateScrollPadding() {
         val sv = scrollView ?: return
+        // If the keyboard is opening and we somehow still have a deferred pin,
+        // clear it to avoid stale runway padding blocking scroll behavior.
+        if (currentKeyboardHeight > 0 && pendingPinReady && !pendingPin) {
+            pendingPinReady = false
+            pendingPinContentHeightAfter = 0
+            runwayInsetPx = 0
+            if (DEBUG_LOGS) {
+                android.util.Log.w(TAG, "cleared stale pendingPinReady during IME")
+            }
+        }
         val basePaddingBottom = getBasePaddingBottomPx()
         if (isPinned) {
             recomputeRunwayInset(basePaddingBottom)
+        } else if (!pendingPin && !pendingPinReady && runwayInsetPx != 0) {
+            // Ensure runway doesn't linger when we're not pinned.
+            runwayInsetPx = 0
         }
         val finalPadding = basePaddingBottom + runwayInsetPx
         sv.setPadding(sv.paddingLeft, sv.paddingTop, sv.paddingRight, finalPadding)
+        if (DEBUG_LOGS) {
+            android.util.Log.w(
+                TAG,
+                "updateScrollPadding base=$basePaddingBottom runway=$runwayInsetPx final=$finalPadding scrollY=${sv.scrollY} maxScroll=${getMaxScroll(sv)}"
+            )
+        }
     }
 
     private fun findAndAttachViews() {
@@ -257,11 +297,18 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
     private fun updateSafeAreaBottomFromRootInsets(): Boolean {
         val rootInsets = ViewCompat.getRootWindowInsets(this) ?: return false
         val navBottom = rootInsets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom
-        if (navBottom != safeAreaBottom) {
+        val imeBottom = rootInsets.getInsets(WindowInsetsCompat.Type.ime()).bottom
+        val safeAreaChanged = navBottom != safeAreaBottom
+        val keyboardChanged = imeBottom != currentKeyboardHeight
+        val shouldUpdateKeyboard = keyboardChanged && !imeAnimating
+        if (!safeAreaChanged && !shouldUpdateKeyboard) return false
+        if (safeAreaChanged) {
             safeAreaBottom = navBottom
-            return true
         }
-        return false
+        if (shouldUpdateKeyboard) {
+            currentKeyboardHeight = imeBottom
+        }
+        return true
     }
 
     private fun applyComposerTranslation() {
@@ -270,6 +317,12 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
         // Clamp to safe area so the composer never dips behind the nav bar during IME close.
         val composerBottomOffset = maxOf(safeAreaBottom, currentKeyboardHeight)
         container.translationY = -(composerBottomOffset + composerGap).toFloat()
+        if (DEBUG_LOGS) {
+            android.util.Log.w(
+                TAG,
+                "applyComposerTranslation keyboardH=$currentKeyboardHeight safeBottom=$safeAreaBottom gap=$composerGap transY=${container.translationY}"
+            )
+        }
     }
     
     private fun setupComposerHeightListener(composer: KeyboardComposerView?) {
@@ -377,7 +430,8 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
     }
 
     private fun setupKeyboardAnimation(sv: ScrollView, composer: KeyboardComposerView?, container: View?) {
-        sv.clipToPadding = false
+        // Keep padding visible so the bottom gap is actually seen while scrolling.
+        sv.clipToPadding = true
         
         val contentGap = dpToPx(CONTENT_GAP_DP)
         // extraBottomInset is in DP (from JS), convert to pixels
@@ -392,6 +446,7 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
             getSafeAreaBottom = { safeAreaBottom },
             getCurrentKeyboardHeight = { currentKeyboardHeight },
             setCurrentKeyboardHeight = { currentKeyboardHeight = it },
+            setImeAnimating = { animating -> imeAnimating = animating },
             applyComposerTranslation = { applyComposerTranslation() },
             updateScrollButtonPosition = { updateScrollButtonPosition() },
             updateScrollPadding = { updateScrollPadding() },
@@ -511,6 +566,17 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
     
     private fun setupScrollListener(sv: ScrollView) {
         sv.viewTreeObserver.addOnScrollChangedListener {
+            if (DEBUG_LOGS) {
+                val maxScroll = getMaxScroll(sv)
+                if (sv.scrollY != lastLoggedScrollY || maxScroll != lastLoggedMaxScroll) {
+                    lastLoggedScrollY = sv.scrollY
+                    lastLoggedMaxScroll = maxScroll
+                    android.util.Log.w(
+                        TAG,
+                        "scrollChanged y=${sv.scrollY} maxScroll=$maxScroll pinned=$isPinned runway=$runwayInsetPx"
+                    )
+                }
+            }
             checkAndUpdateScrollPosition()
         }
 
@@ -534,6 +600,12 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
 
         pendingPin = true
         pendingPinMessageStartY = child.height
+        if (DEBUG_LOGS) {
+            android.util.Log.w(
+                TAG,
+                "requestPin pending startY=$pendingPinMessageStartY contentH=${child.height} scrollY=${sv.scrollY}"
+            )
+        }
     }
 
     private fun handleContentSizeChange(contentHeight: Int) {
@@ -549,6 +621,12 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
                 pendingPinContentHeightAfter = contentHeight
             } else {
                 applyPinAfterSend(contentHeight)
+            }
+            if (DEBUG_LOGS) {
+                android.util.Log.w(
+                    TAG,
+                    "contentSizeChange pendingPin contentH=$contentHeight keyboardH=$currentKeyboardHeight"
+                )
             }
             return
         }
@@ -579,10 +657,17 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
             child = child
         )
 
-        isPinned = result.isPinned
+        // Always pin to the new message position, even if runway isn't needed.
+        isPinned = true
         pinnedScrollY = result.pinnedScrollY
         runwayInsetPx = result.runwayInsetPx
         updateScrollPadding()
+        if (DEBUG_LOGS) {
+            android.util.Log.w(
+                TAG,
+                "applyPin contentAfter=$contentHeightAfter viewport=$viewportH pinned=$isPinned pinnedY=$pinnedScrollY runway=$runwayInsetPx"
+            )
+        }
 
         // Prevent scroll-to-bottom button flicker while we smooth-scroll into the pinned position.
         suppressScrollButtonVisibility = true
@@ -613,6 +698,12 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
             if (settled || frames >= maxFrames) {
                 suppressScrollButtonVisibility = false
                 post { checkAndUpdateScrollPosition() }
+                if (DEBUG_LOGS) {
+                    android.util.Log.w(
+                        TAG,
+                        "pinnedSettled settled=$settled frames=$frames delta=$delta targetY=$targetY"
+                    )
+                }
                 return
             }
 
@@ -635,9 +726,7 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
             pinnedScrollY = pinnedScrollY,
             scrollPaddingTop = sv.paddingTop
         )
-        if (runwayInsetPx == 0) {
-            clearPinnedState()
-        }
+        // Keep pin active even when runway isn't needed (content taller than viewport).
     }
 
     private fun clearPinnedState() {
@@ -648,5 +737,8 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
         pendingPinMessageStartY = 0
         pendingPinReady = false
         pendingPinContentHeightAfter = 0
+        if (DEBUG_LOGS) {
+            android.util.Log.w(TAG, "clearPinnedState")
+        }
     }
 }

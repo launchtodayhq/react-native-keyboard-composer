@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import {
   View,
   Text,
@@ -40,6 +40,13 @@ function ChatScreen() {
   const [composerHeight, setComposerHeight] = useState(
     constants.defaultMinHeight
   );
+  const [isStreaming, setIsStreaming] = useState(false);
+  const streamingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  );
+  const streamChunkTimeoutsRef = useRef<Array<ReturnType<typeof setTimeout>>>(
+    []
+  );
 
   const handleHeightChange = useCallback((height: number) => {
     setComposerHeight(height);
@@ -64,6 +71,16 @@ function ChatScreen() {
   const handleSend = useCallback((text: string) => {
     if (!text.trim()) return;
 
+    if (streamingTimeoutRef.current) {
+      clearTimeout(streamingTimeoutRef.current);
+      streamingTimeoutRef.current = null;
+    }
+    if (streamChunkTimeoutsRef.current.length > 0) {
+      streamChunkTimeoutsRef.current.forEach((id) => clearTimeout(id));
+      streamChunkTimeoutsRef.current = [];
+    }
+    setIsStreaming(true);
+
     const userMessage: Message = {
       id: Date.now().toString(),
       text: text.trim(),
@@ -80,7 +97,7 @@ function ChatScreen() {
       "Great observation! Notice how the content adjusts as you type. This library handles all the edge cases: keyboard show/hide, input growing, maintaining scroll position, and more.",
       "Thanks for trying out the keyboard composer! This demonstrates ChatGPT-style pin-to-top behavior where new messages appear at the top with room for the response to stream in below.",
       "Here’s a deliberately super long streamed response for stress-testing scroll pinning, keyboard transitions, and layout thrash under continuous content growth. We want to confirm that when the user presses send, the keyboard dismiss animation and the pin-to-top scroll feel like a single, consistent motion — not a snap down and then a scroll up. While this message streams in word-by-word, watch for subtle jitter in the pinned position: the content should remain visually anchored at the pinned offset without fighting the user’s scroll gestures. Also verify that the scroll-to-bottom button logic stays stable (no flashing) and that scroll indicator insets don’t jump unexpectedly. If you rotate the device, change dynamic type size, or trigger safe-area changes, the pinned behavior should remain predictable and shouldn’t reset into a broken state. Finally, confirm that the animation timing is consistent between the 2nd message and later messages — it should not feel like it “speeds up” as more messages arrive; instead, each pin should feel smooth, predictable, and native.",
-      "Another super long response to test sustained streaming over a longer duration. This one is meant to simulate a multi-paragraph assistant output where the layout repeatedly recalculates heights and content sizes. As this streams, pay attention to three things: first, whether the pinned offset is enforced gently (no micro-snaps every frame), second, whether the scroll view maintains its intended runway behavior (space below for streaming without leaving weird blank gaps above), and third, whether keyboard hide/show transitions remain coherent if you quickly focus the composer again mid-stream. Try sending multiple messages back-to-back, try sending while the keyboard is already hiding, and try interrupting with a manual scroll. The goal is that the UI never looks like it’s moving the content the “wrong way” — it should either stay pinned and stable, or clearly hand control over to the user when they interact. This message is intentionally verbose so you can reproduce edge cases that only show up when the scroll view content grows for a long time."
+      "Another super long response to test sustained streaming over a longer duration. This one is meant to simulate a multi-paragraph assistant output where the layout repeatedly recalculates heights and content sizes. As this streams, pay attention to three things: first, whether the pinned offset is enforced gently (no micro-snaps every frame), second, whether the scroll view maintains its intended runway behavior (space below for streaming without leaving weird blank gaps above), and third, whether keyboard hide/show transitions remain coherent if you quickly focus the composer again mid-stream. Try sending multiple messages back-to-back, try sending while the keyboard is already hiding, and try interrupting with a manual scroll. The goal is that the UI never looks like it’s moving the content the “wrong way” — it should either stay pinned and stable, or clearly hand control over to the user when they interact. This message is intentionally verbose so you can reproduce edge cases that only show up when the scroll view content grows for a long time. Add a couple more lines here so the content clearly exceeds the viewport on smaller screens. This extra paragraph should push the scroll area further, making it easier to verify scroll-to-bottom behavior and pinned offsets.",
     ];
     // Use the last (long) response for testing, or random for variety
     const fullResponse = responses[responses.length - 1]; // Always use long response for testing
@@ -105,7 +122,7 @@ function ChatScreen() {
     let currentText = "";
 
     words.forEach((word, index) => {
-      setTimeout(() => {
+      const timeoutId = setTimeout(() => {
         currentText += (index === 0 ? "" : " ") + word;
         const streamedText = currentText;
         setMessages((prev) =>
@@ -114,8 +131,29 @@ function ChatScreen() {
           )
         );
       }, 600 + index * 50); // 50ms per word
+      streamChunkTimeoutsRef.current.push(timeoutId);
     });
+
+    const totalDuration = 600 + words.length * 50 + 50;
+    streamingTimeoutRef.current = setTimeout(() => {
+      setIsStreaming(false);
+      streamingTimeoutRef.current = null;
+      streamChunkTimeoutsRef.current = [];
+    }, totalDuration);
   }, []);
+
+  const handleStop = useCallback(() => {
+    if (!isStreaming) return;
+    if (streamingTimeoutRef.current) {
+      clearTimeout(streamingTimeoutRef.current);
+      streamingTimeoutRef.current = null;
+    }
+    if (streamChunkTimeoutsRef.current.length > 0) {
+      streamChunkTimeoutsRef.current.forEach((id) => clearTimeout(id));
+      streamChunkTimeoutsRef.current = [];
+    }
+    setIsStreaming(false);
+  }, [isStreaming]);
 
   const renderMessage = (item: Message) => {
     const isUser = item.role === "user";
@@ -277,10 +315,13 @@ function ChatScreen() {
                 style={{ flex: 1 }}
                 placeholder="Ask anything"
                 onSend={handleSend}
+                onStop={handleStop}
                 onHeightChange={handleHeightChange}
                 minHeight={constants.defaultMinHeight}
                 maxHeight={constants.defaultMaxHeight}
+                expandedEditorEnabled={true}
                 sendButtonEnabled={true}
+                isStreaming={isStreaming}
               />
             </View>
           </View>

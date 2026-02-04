@@ -18,6 +18,10 @@ public class KeyboardComposerModule: Module {
         view.placeholder = value
       }
 
+      Prop("text") { (view: KeyboardComposerView, value: String) in
+        view.text = value
+      }
+
       Prop("minHeight") { (view: KeyboardComposerView, value: CGFloat) in
         view.minHeight = value
       }
@@ -46,6 +50,10 @@ public class KeyboardComposerModule: Module {
 
       Prop("isStreaming") { (view: KeyboardComposerView, value: Bool) in
         view.isStreaming = value
+      }
+
+      Prop("expandedEditorEnabled") { (view: KeyboardComposerView, value: Bool) in
+        view.expandedEditorEnabled = value
       }
 
       Events(

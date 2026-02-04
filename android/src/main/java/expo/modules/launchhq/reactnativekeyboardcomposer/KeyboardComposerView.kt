@@ -46,6 +46,18 @@ class KeyboardComposerView(context: Context, appContext: AppContext) : ExpoView(
             editText.hint = value
         }
 
+    var text: String
+        set(value) {
+            // Only update if text is actually different (prevents cursor jump on re-render)
+            if (editText.text?.toString() != value) {
+                editText.setText(value)
+                editText.setSelection(value.length)
+                updateHeight()
+                updateSendButtonState()
+            }
+        }
+        get() = editText.text?.toString() ?: ""
+
     var minHeightDp: Float = 48f
         set(value) {
             field = value
@@ -303,12 +315,12 @@ class KeyboardComposerView(context: Context, appContext: AppContext) : ExpoView(
     private fun createStopButtonDrawable(size: Int): Drawable {
         return object : Drawable() {
             private val circlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = getTextColor()
+                color = Color.BLACK
                 style = Paint.Style.FILL
             }
             
             private val stopPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = getBackgroundColor()
+                color = Color.WHITE
                 style = Paint.Style.FILL
             }
 
@@ -320,7 +332,7 @@ class KeyboardComposerView(context: Context, appContext: AppContext) : ExpoView(
 
                 canvas.drawCircle(cx, cy, radius, circlePaint)
 
-                val squareSize = radius * 0.7f
+                val squareSize = radius * 0.42f
                 val left = cx - squareSize / 2
                 val top = cy - squareSize / 2
                 val right = cx + squareSize / 2

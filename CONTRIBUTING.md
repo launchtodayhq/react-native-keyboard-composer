@@ -70,7 +70,6 @@ From `example/`:
 
 ```bash
 pnpm use:published
-pnpm install
 pnpm prebuild
 pnpm android
 # or pnpm ios
@@ -80,7 +79,6 @@ pnpm android
 
 ```bash
 pnpm use:local
-pnpm install
 pnpm prebuild:local
 pnpm android:local
 # or pnpm ios:local
@@ -89,6 +87,7 @@ pnpm android:local
 Notes:
 
 - `pnpm use:local` switches `@launchhq/react-native-keyboard-composer` to `file:..` so Expo autolinking compiles your local `android/` + `ios/` code.
+- `pnpm use:local` also builds the library (`../build/*`) so Metro can resolve the package entrypoint.
 - `USE_LOCAL_KEYBOARD_COMPOSER=1` toggles the example's Metro + autolinking configuration for local development.
 
 ## Project Structure

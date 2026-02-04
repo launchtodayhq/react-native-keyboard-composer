@@ -32,7 +32,6 @@ If you're developing the library and want the example to use the local source in
 
 ```bash
 pnpm use:local
-pnpm install
 pnpm prebuild:local
 pnpm android:local
 # or pnpm ios:local

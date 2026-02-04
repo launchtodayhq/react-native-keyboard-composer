@@ -37,6 +37,9 @@ This library solves all of that with native implementations that handle the edge
 - 🌙 **Dark mode support** - Automatically adapts to system theme
 - 👆 **Gesture support (iOS)** - Swipe down to dismiss keyboard, swipe up to open
 
+> **Note:** Android support is still a WIP and may be buggy.
+> **Note:** Currently supports React Native `ScrollView` only. Support for `FlashList` and `LegendList` is planned for later this year.
+
 ## Installation
 
 ```bash
@@ -132,6 +135,7 @@ The main composer input component.
 | Prop                     | Type                       | Default               | Description                         |
 | ------------------------ | -------------------------- | --------------------- | ----------------------------------- |
 | `placeholder`            | `string`                   | `"Type a message..."` | Placeholder text                    |
+| `text`                   | `string`                   | `""`                  | Controlled text value               |
 | `minHeight`              | `number`                   | `48`                  | Minimum height in dp/points         |
 | `maxHeight`              | `number`                   | `120`                 | Maximum height before scrolling     |
 | `sendButtonEnabled`      | `boolean`                  | `true`                | Whether send button is enabled      |
