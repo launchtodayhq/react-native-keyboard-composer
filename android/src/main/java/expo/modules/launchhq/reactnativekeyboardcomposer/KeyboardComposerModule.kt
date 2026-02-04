@@ -18,6 +18,10 @@ class KeyboardComposerModule : Module() {
                 view.placeholderText = value
             }
 
+            Prop("text") { view: KeyboardComposerView, value: String ->
+                view.text = value
+            }
+
             Prop("minHeight") { view: KeyboardComposerView, value: Float ->
                 view.minHeightDp = value
             }

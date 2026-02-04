@@ -255,7 +255,8 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
             if currentMaxOffset <= 0.5 {
                 return projectedMaxOffset > 0.5
             }
-            let threshold = max(140, min(520, keyboardHeight + 80))
+            // Only auto-adjust when very near the bottom.
+            let threshold: CGFloat = 80
             return isNearBottom(scrollView, threshold: threshold)
         }()
 
@@ -319,7 +320,7 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
                 // Update content inset.
                 // If we are going to adjust the offset during this transition, don't also "preserve"
                 // the old offset here (that causes the down→up snap as preserve fights scrollToBottom).
-                let preserveDuringShow = self.isPinActive && !(isInitialShow && self.wasAtBottom)
+                let preserveDuringShow = !self.wasAtBottom || self.isPinActive
                 self.updateContentInset(preserveScrollPosition: preserveDuringShow)
                 
                 // Scroll to bottom INSIDE animation block - ONLY on initial keyboard show
@@ -420,7 +421,7 @@ class KeyboardAwareScrollHandler: NSObject, UIGestureRecognizerDelegate, UIScrol
             animations: {
                 // If we are going to adjust the offset in this block, do not also preserve the old offset.
                 // Preserving + adjusting in the same keyboard animation is what produces the snap.
-                let preserveDuringFrame = self.isPinActive && !shouldAdjust
+                let preserveDuringFrame = !shouldAdjust || self.isPinActive
                 self.updateContentInset(preserveScrollPosition: preserveDuringFrame)
                 if shouldAdjust {
                     let contentHeight = scrollView.contentSize.height

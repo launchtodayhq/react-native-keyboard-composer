@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import {
   View,
   Text,
@@ -40,11 +40,17 @@ function ChatScreen() {
   const [composerHeight, setComposerHeight] = useState(
     constants.defaultMinHeight
   );
+  const [isStreaming, setIsStreaming] = useState(false);
+  const streamingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  );
+  const streamChunkTimeoutsRef = useRef<Array<ReturnType<typeof setTimeout>>>(
+    []
+  );
 
   const handleHeightChange = useCallback((height: number) => {
     setComposerHeight(height);
   }, []);
-
 
   // Responsive layout
   const isLargeScreen = isTablet || isDesktop;
@@ -64,6 +70,16 @@ function ChatScreen() {
 
   const handleSend = useCallback((text: string) => {
     if (!text.trim()) return;
+
+    if (streamingTimeoutRef.current) {
+      clearTimeout(streamingTimeoutRef.current);
+      streamingTimeoutRef.current = null;
+    }
+    if (streamChunkTimeoutsRef.current.length > 0) {
+      streamChunkTimeoutsRef.current.forEach((id) => clearTimeout(id));
+      streamChunkTimeoutsRef.current = [];
+    }
+    setIsStreaming(true);
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -106,7 +122,7 @@ function ChatScreen() {
     let currentText = "";
 
     words.forEach((word, index) => {
-      setTimeout(() => {
+      const timeoutId = setTimeout(() => {
         currentText += (index === 0 ? "" : " ") + word;
         const streamedText = currentText;
         setMessages((prev) =>
@@ -115,8 +131,29 @@ function ChatScreen() {
           )
         );
       }, 600 + index * 50); // 50ms per word
+      streamChunkTimeoutsRef.current.push(timeoutId);
     });
+
+    const totalDuration = 600 + words.length * 50 + 50;
+    streamingTimeoutRef.current = setTimeout(() => {
+      setIsStreaming(false);
+      streamingTimeoutRef.current = null;
+      streamChunkTimeoutsRef.current = [];
+    }, totalDuration);
   }, []);
+
+  const handleStop = useCallback(() => {
+    if (!isStreaming) return;
+    if (streamingTimeoutRef.current) {
+      clearTimeout(streamingTimeoutRef.current);
+      streamingTimeoutRef.current = null;
+    }
+    if (streamChunkTimeoutsRef.current.length > 0) {
+      streamChunkTimeoutsRef.current.forEach((id) => clearTimeout(id));
+      streamChunkTimeoutsRef.current = [];
+    }
+    setIsStreaming(false);
+  }, [isStreaming]);
 
   const renderMessage = (item: Message) => {
     const isUser = item.role === "user";
@@ -278,11 +315,13 @@ function ChatScreen() {
                 style={{ flex: 1 }}
                 placeholder="Ask anything"
                 onSend={handleSend}
+                onStop={handleStop}
                 onHeightChange={handleHeightChange}
                 minHeight={constants.defaultMinHeight}
                 maxHeight={constants.defaultMaxHeight}
                 expandedEditorEnabled={true}
                 sendButtonEnabled={true}
+                isStreaming={isStreaming}
               />
             </View>
           </View>

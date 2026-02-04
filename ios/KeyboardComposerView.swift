@@ -240,6 +240,8 @@ class KeyboardComposerView: ExpoView {
       width: buttonSize,
       height: buttonSize
     )
+    sendButton.layer.cornerRadius = buttonSize / 2
+    sendButton.clipsToBounds = true
 
     let expandSize: CGFloat = 28
     let expandX = bounds.width - 36
@@ -444,18 +446,23 @@ class KeyboardComposerView: ExpoView {
   }
 
   private func updateButtonAppearance() {
-    let config = UIImage.SymbolConfiguration(pointSize: 28, weight: .medium)
+    let sendConfig = UIImage.SymbolConfiguration(pointSize: 28, weight: .medium)
+    let stopConfig = UIImage.SymbolConfiguration(pointSize: 12, weight: .semibold)
     
     if isStreaming {
-      let image = UIImage(systemName: "stop.circle.fill", withConfiguration: config)
+      let image = UIImage(systemName: "stop.fill", withConfiguration: stopConfig)
       sendButton.setImage(image, for: .normal)
-      sendButton.tintColor = .label
+      sendButton.tintColor = .white
+      sendButton.backgroundColor = .black
+      sendButton.contentEdgeInsets = UIEdgeInsets(top: 9, left: 9, bottom: 9, right: 9)
       sendButton.isEnabled = true
       sendButton.alpha = 1.0
     } else {
-      let image = UIImage(systemName: "arrow.up.circle.fill", withConfiguration: config)
+      let image = UIImage(systemName: "arrow.up.circle.fill", withConfiguration: sendConfig)
       sendButton.setImage(image, for: .normal)
       sendButton.tintColor = .label
+      sendButton.backgroundColor = .clear
+      sendButton.contentEdgeInsets = .zero
       updateSendButtonState()
     }
   }
@@ -491,6 +498,11 @@ class KeyboardComposerView: ExpoView {
   }
 
   private func updateSendButtonState() {
+    if isStreaming {
+      sendButton.isEnabled = true
+      sendButton.alpha = 1.0
+      return
+    }
     let hasText = !textView.text.isEmpty
     sendButton.isEnabled = sendButtonEnabled && hasText
     sendButton.alpha = sendButton.isEnabled ? 1.0 : 0.4
