@@ -23,7 +23,7 @@ import kotlin.math.abs
 class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(context, appContext) {
 
     companion object {
-        private const val CONTENT_GAP_DP = 24
+        private const val CONTENT_GAP_DP = 12
         private const val COMPOSER_KEYBOARD_GAP_DP = 8
         private const val BUTTON_SIZE_DP = 32
         private const val BUTTON_GAP_DP = 24   // Gap between button and input
@@ -657,7 +657,8 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
             child = child
         )
 
-        isPinned = result.isPinned
+        // Always pin to the new message position, even if runway isn't needed.
+        isPinned = true
         pinnedScrollY = result.pinnedScrollY
         runwayInsetPx = result.runwayInsetPx
         updateScrollPadding()
@@ -725,9 +726,7 @@ class KeyboardAwareWrapper(context: Context, appContext: AppContext) : ExpoView(
             pinnedScrollY = pinnedScrollY,
             scrollPaddingTop = sv.paddingTop
         )
-        if (runwayInsetPx == 0) {
-            clearPinnedState()
-        }
+        // Keep pin active even when runway isn't needed (content taller than viewport).
     }
 
     private fun clearPinnedState() {

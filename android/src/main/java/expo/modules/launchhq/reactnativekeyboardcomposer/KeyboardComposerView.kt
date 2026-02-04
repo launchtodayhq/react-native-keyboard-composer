@@ -332,7 +332,7 @@ class KeyboardComposerView(context: Context, appContext: AppContext) : ExpoView(
 
                 canvas.drawCircle(cx, cy, radius, circlePaint)
 
-                val squareSize = radius * 0.28f
+                val squareSize = radius * 0.42f
                 val left = cx - squareSize / 2
                 val top = cy - squareSize / 2
                 val right = cx + squareSize / 2
