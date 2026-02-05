@@ -1,6 +1,10 @@
 {
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
-    "strict": true
+    "strict": true,
+    "paths": {
+      "@launchhq/react-native-keyboard-composer": ["../src/index"],
+      "@launchhq/react-native-keyboard-composer/*": ["../src/*"]
+    }
   }
 }
