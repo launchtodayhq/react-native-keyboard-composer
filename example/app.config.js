@@ -16,5 +16,11 @@ module.exports = ({ config }) => {
     };
   }
 
+  const plugins = Array.isArray(expoConfig.plugins) ? expoConfig.plugins : [];
+  if (!plugins.includes("expo-font")) {
+    plugins.push("expo-font");
+  }
+  expoConfig.plugins = plugins;
+
   return expoConfig;
 };
