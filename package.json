@@ -25,12 +25,14 @@
     "access": "public"
   },
   "scripts": {
-    "build": "expo-module build",
+    "build": "CI=1 expo-module build",
     "clean": "expo-module clean",
     "lint": "expo-module lint",
     "test": "expo-module test",
     "prepare": "expo-module prepare",
     "prepack": "pnpm run build",
+    "release:dry-run": "CI=1 pnpm run build && npm publish --dry-run --access public --ignore-scripts",
+    "release:publish": "CI=1 pnpm run build && npm publish --access public --ignore-scripts",
     "open:ios": "xed example/ios",
     "open:android": "open -a \"Android Studio\" example/android"
   },
