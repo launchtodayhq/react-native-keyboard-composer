@@ -31,7 +31,6 @@
     "test": "expo-module test",
     "prepare": "expo-module prepare",
     "prepack": "pnpm run build",
-    "expo-module": "expo-module",
     "open:ios": "xed example/ios",
     "open:android": "open -a \"Android Studio\" example/android"
   },
@@ -57,16 +56,16 @@
   "license": "MIT",
   "homepage": "https://github.com/launchtodayhq/react-native-keyboard-composer#readme",
   "devDependencies": {
-    "@types/react": "~19.1.0",
-    "expo": "^54.0.27",
-    "expo-modules-core": "^3.0.29",
-    "expo-module-scripts": "^5.0.8",
-    "react-native": "0.81.5",
+    "@types/react": "~19.2.14",
+    "expo": "^55.0.5",
+    "expo-modules-core": "^55.0.14",
+    "expo-module-scripts": "^55.0.2",
+    "react": "19.2.4",
+    "react-native": "0.84.1",
     "typescript": "^5.9.3"
   },
   "peerDependencies": {
     "expo": "*",
-    "expo-modules-core": "*",
     "react": "*",
     "react-native": "*"
   }
