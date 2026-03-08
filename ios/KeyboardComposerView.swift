@@ -105,7 +105,7 @@ class KeyboardComposerView: ExpoView {
     clipsToBounds = false
 
     // Container background is handled natively so consumers don't have to wrap in an extra view.
-    containerView.backgroundColor = composerBackgroundColor()
+    containerView.backgroundColor = .clear
     containerView.layer.cornerRadius = 0
     containerView.clipsToBounds = false
 
@@ -117,7 +117,7 @@ class KeyboardComposerView: ExpoView {
     textView.backgroundColor = .clear
     textView.textColor = .label
     // Leave room for the send button (bottom-right) and the expand button (top-right).
-    textView.textContainerInset = UIEdgeInsets(top: 14, left: 12, bottom: 14, right: 56)
+    textView.textContainerInset = UIEdgeInsets(top: 14, left: 12, bottom: 14, right: 12)
     textView.textContainer.lineFragmentPadding = 0
     textView.textContainer.lineBreakMode = .byWordWrapping
     textView.isScrollEnabled = false
@@ -198,7 +198,6 @@ class KeyboardComposerView: ExpoView {
     super.traitCollectionDidChange(previousTraitCollection)
     // Ensure placeholder color stays correct when switching light/dark mode.
     placeholderLabel.textColor = placeholderColor()
-    containerView.backgroundColor = composerBackgroundColor()
     textView.textColor = .label
   }
 
@@ -505,6 +504,7 @@ class KeyboardComposerView: ExpoView {
     }
     let hasText = !textView.text.isEmpty
     sendButton.isEnabled = sendButtonEnabled && hasText
+    sendButton.isHidden = !sendButtonEnabled
     sendButton.alpha = sendButton.isEnabled ? 1.0 : 0.4
   }
 
