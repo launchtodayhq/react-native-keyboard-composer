@@ -5,7 +5,7 @@
   "main": "index.ts",
   "scripts": {
     "use:local": "pnpm -C .. install && pnpm -C .. build && pnpm pkg set dependencies.@launchhq/react-native-keyboard-composer=file:.. && pnpm install",
-    "use:published": "pnpm pkg set dependencies.@launchhq/react-native-keyboard-composer=^1.0.1 && pnpm install",
+    "use:published": "pnpm pkg set dependencies.@launchhq/react-native-keyboard-composer=^1.0.0 && pnpm install",
     "start": "expo start",
     "start:local": "USE_LOCAL_KEYBOARD_COMPOSER=1 expo start",
     "android": "pnpm exec expo run:android --device",
@@ -19,7 +19,7 @@
   },
   "dependencies": {
     "@expo/vector-icons": "15.0.3",
-    "@launchhq/react-native-keyboard-composer": "file:..",
+    "@launchhq/react-native-keyboard-composer": "^1.0.0",
     "@legendapp/list": "^2.0.18",
     "expo": "~55.0.5",
     "expo-font": "~55.0.4",

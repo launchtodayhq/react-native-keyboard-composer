@@ -12,8 +12,8 @@ importers:
         specifier: 15.0.3
         version: 15.0.3(expo-font@55.0.4(expo@55.0.5)(react-native@0.83.2(@babel/core@7.28.5)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0))(react-native@0.83.2(@babel/core@7.28.5)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0)
       '@launchhq/react-native-keyboard-composer':
-        specifier: file:..
-        version: file:..(expo@55.0.5)(react-native@0.83.2(@babel/core@7.28.5)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0)
+        specifier: ^1.0.0
+        version: 1.0.0(expo-modules-core@55.0.14(react-native@0.83.2(@babel/core@7.28.5)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0))(expo@55.0.5)(react-native@0.83.2(@babel/core@7.28.5)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0)
       '@legendapp/list':
         specifier: ^2.0.18
         version: 2.0.18(react-native@0.83.2(@babel/core@7.28.5)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0)
@@ -768,10 +768,11 @@ packages:
   '@jridgewell/trace-mapping@0.3.31':
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
 
-  '@launchhq/react-native-keyboard-composer@file:..':
-    resolution: {directory: .., type: directory}
+  '@launchhq/react-native-keyboard-composer@1.0.0':
+    resolution: {integrity: sha512-3WN5XdSSxQPexR37UT4XJHiv3ihwwWmQKt4av3dAYjKwLbfZ1MAqR48y8tOS75G3Vll9BYWMMzc7bjUOpfdftQ==}
     peerDependencies:
       expo: '*'
+      expo-modules-core: '*'
       react: '*'
       react-native: '*'
 
@@ -3451,9 +3452,10 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
 
-  '@launchhq/react-native-keyboard-composer@file:..(expo@55.0.5)(react-native@0.83.2(@babel/core@7.28.5)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0)':
+  '@launchhq/react-native-keyboard-composer@1.0.0(expo-modules-core@55.0.14(react-native@0.83.2(@babel/core@7.28.5)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0))(expo@55.0.5)(react-native@0.83.2(@babel/core@7.28.5)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0)':
     dependencies:
       expo: 55.0.5(@babel/core@7.28.5)(@expo/dom-webview@55.0.3)(react-native@0.83.2(@babel/core@7.28.5)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0)(typescript@5.9.3)
+      expo-modules-core: 55.0.14(react-native@0.83.2(@babel/core@7.28.5)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0)
       react: 19.2.0
       react-native: 0.83.2(@babel/core@7.28.5)(@types/react@19.2.14)(react@19.2.0)
 
