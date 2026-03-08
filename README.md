@@ -138,7 +138,8 @@ The main composer input component.
 | `text`                   | `string`                   | `""`                  | Controlled text value               |
 | `minHeight`              | `number`                   | `48`                  | Minimum height in dp/points         |
 | `maxHeight`              | `number`                   | `120`                 | Maximum height before scrolling     |
-| `sendButtonEnabled`      | `boolean`                  | `true`                | Whether send button is enabled      |
+| `sendButtonEnabled`      | `boolean`                  | `true`                | Whether send action is enabled      |
+| `showSendButton`         | `boolean`                  | `true`                | Whether send/stop button is visible |
 | `editable`               | `boolean`                  | `true`                | Whether input is editable           |
 | `autoFocus`              | `boolean`                  | `false`               | Auto-focus on mount                 |
 | `blurTrigger`            | `number`                   | -                     | Change value to trigger blur        |
@@ -254,6 +255,18 @@ const styles = StyleSheet.create({
 });
 ```
 
+### Hiding The Built-In Send Button
+
+Use `showSendButton={false}` when you want to supply your own controls outside of `KeyboardComposer`.
+
+```tsx
+<KeyboardComposer
+  placeholder="Type a message..."
+  showSendButton={false}
+  onChangeText={setDraft}
+/>
+```
+
 ## How It Works
 
 The library handles three key scenarios:
@@ -299,6 +312,23 @@ If you’re contributing to this repo (or running the `example/` app locally), s
 
 - Running the example against the **published npm package** (consumer mode)
 - Running the example against the **local package source** (native development mode)
+
+### Quick local iOS loop (`example/`)
+
+From `example/`, this runs install, local prebuild, iOS build/run, then starts Metro in local mode:
+
+```bash
+pnpm i
+pnpm prebuild:local
+pnpm ios:local
+pnpm start:local
+```
+
+If you want the example app to use the local package while editing this repo, run:
+
+```bash
+pnpm use:local
+```
 
 ### Local Development Setup
 

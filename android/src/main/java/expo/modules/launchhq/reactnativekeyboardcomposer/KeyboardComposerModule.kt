@@ -34,6 +34,10 @@ class KeyboardComposerModule : Module() {
                 view.sendButtonEnabled = value
             }
 
+            Prop("showSendButton") { view: KeyboardComposerView, value: Boolean ->
+                view.showSendButton = value
+            }
+
             Prop("editable") { view: KeyboardComposerView, value: Boolean ->
                 view.editable = value
             }

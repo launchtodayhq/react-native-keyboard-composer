@@ -319,7 +319,7 @@ function ChatScreen() {
                 onHeightChange={handleHeightChange}
                 minHeight={constants.defaultMinHeight}
                 maxHeight={constants.defaultMaxHeight}
-                sendButtonEnabled={true}
+                sendButtonEnabled
                 isStreaming={isStreaming}
               />
             </View>

@@ -32,6 +32,15 @@ class KeyboardComposerView: ExpoView {
     didSet { updateSendButtonState() }
   }
 
+  var showSendButton: Bool = true {
+    didSet {
+      updateButtonAppearance()
+      updateSendButtonState()
+      setNeedsLayout()
+      updateExpandedEditorButtonVisibility()
+    }
+  }
+
   var editable: Bool = true {
     didSet {
       textView.isEditable = editable
@@ -116,8 +125,7 @@ class KeyboardComposerView: ExpoView {
     textView.font = .systemFont(ofSize: 16)
     textView.backgroundColor = .clear
     textView.textColor = .label
-    // Leave room for the send button (bottom-right) and the expand button (top-right).
-    textView.textContainerInset = UIEdgeInsets(top: 14, left: 12, bottom: 14, right: 56)
+    updateTextContainerInsets(shouldReserveTrailingSpace: showSendButton)
     textView.textContainer.lineFragmentPadding = 0
     textView.textContainer.lineBreakMode = .byWordWrapping
     textView.isScrollEnabled = false
@@ -258,6 +266,11 @@ class KeyboardComposerView: ExpoView {
 
   private func setupConstraints() {
     // Using frame-based layout in layoutSubviews
+  }
+
+  private func updateTextContainerInsets(shouldReserveTrailingSpace: Bool) {
+    let rightInset: CGFloat = shouldReserveTrailingSpace ? 56 : 12
+    textView.textContainerInset = UIEdgeInsets(top: 14, left: 12, bottom: 14, right: rightInset)
   }
 
   // MARK: - Keyboard Layout Guide Integration
@@ -446,6 +459,11 @@ class KeyboardComposerView: ExpoView {
   }
 
   private func updateButtonAppearance() {
+    sendButton.isHidden = !showSendButton
+    if !showSendButton {
+      return
+    }
+
     let sendConfig = UIImage.SymbolConfiguration(pointSize: 28, weight: .medium)
     let stopConfig = UIImage.SymbolConfiguration(pointSize: 12, weight: .semibold)
     
@@ -481,6 +499,7 @@ class KeyboardComposerView: ExpoView {
     let isAtMaxHeight = contentHeight >= (maxHeight - 0.5)
     let shouldShowExpand = expandedEditorEnabled && editable && !isStreaming && isAtMaxHeight
     expandButton.isHidden = !shouldShowExpand
+    updateTextContainerInsets(shouldReserveTrailingSpace: showSendButton || shouldShowExpand)
     
     let shouldScroll = contentHeight > maxHeight
     if textView.isScrollEnabled != shouldScroll {
@@ -498,6 +517,12 @@ class KeyboardComposerView: ExpoView {
   }
 
   private func updateSendButtonState() {
+    if !showSendButton {
+      sendButton.isEnabled = false
+      sendButton.alpha = 0
+      return
+    }
+
     if isStreaming {
       sendButton.isEnabled = true
       sendButton.alpha = 1.0

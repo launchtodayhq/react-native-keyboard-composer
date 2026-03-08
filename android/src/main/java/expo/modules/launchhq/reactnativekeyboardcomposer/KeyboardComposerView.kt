@@ -83,6 +83,15 @@ class KeyboardComposerView(context: Context, appContext: AppContext) : ExpoView(
             updateSendButtonState()
         }
 
+    var showSendButton: Boolean = true
+        set(value) {
+            field = value
+            updateEditTextPadding()
+            updateButtonAppearance()
+            updateSendButtonState()
+            requestLayout()
+        }
+
     var editable: Boolean = true
         set(value) {
             field = value
@@ -109,7 +118,7 @@ class KeyboardComposerView(context: Context, appContext: AppContext) : ExpoView(
     internal var onNativeSend: (() -> Unit)? = null
 
     // MARK: - UI Elements
-    private val editText: EditText
+    private lateinit var editText: EditText
     private val sendButton: ImageButton
     private var currentHeight: Int = 0
     private var minHeightPx: Int = 0
@@ -159,6 +168,7 @@ class KeyboardComposerView(context: Context, appContext: AppContext) : ExpoView(
         }
 
         setupEditTextTouchHandling()
+        updateEditTextPadding()
 
         sendButton = ImageButton(context).apply {
             setBackgroundColor(Color.TRANSPARENT)
@@ -251,6 +261,11 @@ class KeyboardComposerView(context: Context, appContext: AppContext) : ExpoView(
     }
 
     private fun updateButtonAppearance() {
+        sendButton.visibility = if (showSendButton) View.VISIBLE else View.GONE
+        if (!showSendButton) {
+            return
+        }
+
         val size = dpToPx(44f)
         val drawable = if (isStreaming) {
             createStopButtonDrawable(size)
@@ -258,7 +273,6 @@ class KeyboardComposerView(context: Context, appContext: AppContext) : ExpoView(
             createSendButtonDrawable(size)
         }
         sendButton.setImageDrawable(drawable)
-        sendButton.visibility = View.VISIBLE
         updateSendButtonState()
     }
 
@@ -332,7 +346,7 @@ class KeyboardComposerView(context: Context, appContext: AppContext) : ExpoView(
 
                 canvas.drawCircle(cx, cy, radius, circlePaint)
 
-                val squareSize = radius * 0.42f
+                val squareSize = radius * 0.56f
                 val left = cx - squareSize / 2
                 val top = cy - squareSize / 2
                 val right = cx + squareSize / 2
@@ -377,6 +391,12 @@ class KeyboardComposerView(context: Context, appContext: AppContext) : ExpoView(
     }
 
     private fun updateSendButtonState() {
+        if (!showSendButton) {
+            sendButton.isEnabled = false
+            sendButton.alpha = 0f
+            return
+        }
+
         if (isStreaming) {
             sendButton.isEnabled = true
             sendButton.alpha = 1f
@@ -385,6 +405,16 @@ class KeyboardComposerView(context: Context, appContext: AppContext) : ExpoView(
             sendButton.isEnabled = sendButtonEnabled && hasText
             sendButton.alpha = if (sendButton.isEnabled) 1f else 0.4f
         }
+    }
+
+    private fun updateEditTextPadding() {
+        if (!::editText.isInitialized) {
+            return
+        }
+        val horizontalPadding = dpToPx(16f)
+        val topBottomPadding = dpToPx(14f)
+        val trailingPadding = if (showSendButton) dpToPx(56f) else horizontalPadding
+        editText.setPadding(horizontalPadding, topBottomPadding, trailingPadding, topBottomPadding)
     }
     
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {

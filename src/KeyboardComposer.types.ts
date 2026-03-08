@@ -26,6 +26,9 @@ export type KeyboardComposerViewProps = {
   /** Whether the send button is enabled */
   sendButtonEnabled?: boolean;
 
+  /** Whether to render the trailing send/stop button */
+  showSendButton?: boolean;
+
   /** Whether the text input is editable */
   editable?: boolean;
 
@@ -82,6 +85,9 @@ export type KeyboardComposerProps = {
 
   /** Whether the send button is enabled */
   sendButtonEnabled?: boolean;
+
+  /** Whether to render the trailing send/stop button */
+  showSendButton?: boolean;
 
   /** Whether the text input is editable */
   editable?: boolean;
